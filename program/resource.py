@@ -28,15 +28,13 @@ if resource == {}:
     exit()
 
 
-
 relatives_paths = get_values_from_json(resource)
 error = False
 
 for path in relatives_paths:
-    path = f"../{path}"
-    print(path)
-    if not os.path.exists(path):
-        print(f"{colorama.Fore.RED}File path not found:  {path}")
+    exit_folder = f"../{path}"
+    if not os.path.exists(exit_folder):
+        print(f"{colorama.Fore.RED}File path not found:  {exit_folder}")
         error = True
 print(colorama.Fore.WHITE)
 

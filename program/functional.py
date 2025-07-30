@@ -3,6 +3,7 @@ from core import Button
 import buttons as btn
 import keyboards
 import core
+from LLM import LLM
 
 class User:
     RUN_BOT_COMMADS = ["/start"]
@@ -78,6 +79,7 @@ class Teacher(Registered):
         super().__init__(myID, telegramBot)
         self.searchClass = []
         self.ref = f"tg://user?id={self.ID}"
+        self.llm = LLM()  # Инициализация LLM для учителя
 
         self.searchClass = Button(btn.Teacher.pin_class().data_input, self.__search_class)
     
@@ -229,10 +231,139 @@ class Teacher(Registered):
             self.text_out("Произошла ошибка при проверке заданий")
             return False
 
+    def generate_individual_task(self):
+        """Генерирует индивидуальное задание с помощью LLM"""
+        try:
+            # Получаем информацию о студенте для персонализации
+            student_info = "Создай математическое задание для ученика"
+            
+            prompt = f"""
+            Создай математическое задание для ученика. Задание должно быть:
+            - Соответствовать школьной программе
+            - Иметь четкую формулировку
+            - Включать правильный ответ
+            - Быть интересным и познавательным
+            
+            Формат ответа:
+            ЗАДАНИЕ: [текст задания]
+            ОТВЕТ: [правильный ответ]
+            ОБЪЯСНЕНИЕ: [краткое объяснение решения]
+            """
+            
+            response = self.llm.request(prompt, context=student_info)
+            self._telegramBot.send_message(self.ID, f"Сгенерированное задание:\n\n{response}", reply_markup=keyboards.Teacher.main)
+            return True
+        except Exception as e:
+            print(f"Ошибка при генерации задания: {e}")
+            self.text_out("Произошла ошибка при создании задания")
+            return False
+
+    def generate_class_task(self):
+        """Генерирует задание для класса с помощью LLM"""
+        try:
+            prompt = """
+            Создай математическое задание для всего класса. Задание должно быть:
+            - Подходящим для групповой работы
+            - Иметь несколько уровней сложности
+            - Включать элементы творчества
+            - Содержать четкие инструкции
+            
+            Формат ответа:
+            ЗАДАНИЕ: [текст задания]
+            КРИТЕРИИ ОЦЕНКИ: [критерии оценки]
+            ВРЕМЯ: [рекомендуемое время выполнения]
+            """
+            
+            response = self.llm.request(prompt)
+            self._telegramBot.send_message(self.ID, f"Сгенерированное задание для класса:\n\n{response}", reply_markup=keyboards.Teacher.main)
+            return True
+        except Exception as e:
+            print(f"Ошибка при генерации задания для класса: {e}")
+            self.text_out("Произошла ошибка при создании задания")
+            return False
+
+    def check_solution_with_llm(self, student_solution: str, task_description: str):
+        """Проверяет решение студента с помощью LLM"""
+        try:
+            prompt = f"""
+            Проверь решение студента по математике.
+            
+            ЗАДАНИЕ: {task_description}
+            РЕШЕНИЕ СТУДЕНТА: {student_solution}
+            
+            Проанализируй решение и дай оценку:
+            - Правильность решения
+            - Полнота ответа
+            - Ошибки (если есть)
+            - Рекомендации по улучшению
+            - Оценка (по 5-балльной шкале)
+            
+            Формат ответа:
+            ОЦЕНКА: [балл]
+            АНАЛИЗ: [подробный анализ]
+            РЕКОМЕНДАЦИИ: [рекомендации]
+            """
+            
+            response = self.llm.request(prompt)
+            return response
+        except Exception as e:
+            print(f"Ошибка при проверке решения: {e}")
+            return "Произошла ошибка при проверке решения"
+
+    def get_student_progress_analysis(self, student_id: str):
+        """Анализирует прогресс студента с помощью LLM"""
+        try:
+            # Получаем данные о студенте и его работах
+            student_name = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == student_id, "name")
+            student_surname = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == student_id, "surname")
+            
+            prompt = f"""
+            Проанализируй прогресс ученика {student_name} {student_surname}.
+            
+            Создай анализ, который включает:
+            - Сильные стороны ученика
+            - Области для улучшения
+            - Рекомендации по обучению
+            - Персональный план развития
+            
+            Анализ должен быть мотивирующим и конструктивным.
+            """
+            
+            response = self.llm.request(prompt)
+            return response
+        except Exception as e:
+            print(f"Ошибка при анализе прогресса: {e}")
+            return "Произошла ошибка при анализе прогресса"
+
+    def create_personalized_explanation(self, topic: str, student_level: str):
+        """Создает персонализированное объяснение темы"""
+        try:
+            prompt = f"""
+            Создай объяснение темы "{topic}" для ученика уровня "{student_level}".
+            
+            Объяснение должно быть:
+            - Понятным для указанного уровня
+            - Содержать примеры
+            - Включать практические задания
+            - Быть структурированным и логичным
+            
+            Формат:
+            ТЕОРИЯ: [объяснение]
+            ПРИМЕРЫ: [примеры]
+            ЗАДАНИЯ: [практические задания]
+            """
+            
+            response = self.llm.request(prompt)
+            return response
+        except Exception as e:
+            print(f"Ошибка при создании объяснения: {e}")
+            return "Произошла ошибка при создании объяснения"
+
 
 class Student(Registered):
     def __init__(self, myID: str = "", telegramBot = None):
         super().__init__(myID, telegramBot)
+        self.llm = LLM()  # Инициализация LLM для студента
 
     def show_main_menu(self):
         self.text_out("главное меню", keyboards.Student.main)
@@ -372,6 +503,177 @@ class Student(Registered):
         except Exception as e:
             print(f"Ошибка при отправке решения: {e}")
             self.text_out("Произошла ошибка при отправке решения")
+            return False
+
+    def get_math_help(self, question: str):
+        """Получает помощь по математике от LLM"""
+        try:
+            prompt = f"""
+            Помоги ученику с математическим вопросом: "{question}"
+            
+            Твой ответ должен быть:
+            - Понятным и пошаговым
+            - Содержать объяснение логики
+            - Включать примеры, если нужно
+            - Мотивирующим для дальнейшего изучения
+            
+            Формат ответа:
+            ОБЪЯСНЕНИЕ: [подробное объяснение]
+            РЕШЕНИЕ: [пошаговое решение]
+            ПОДСКАЗКА: [дополнительная подсказка]
+            """
+            
+            response = self.llm.request(prompt)
+            self._telegramBot.send_message(self.ID, f"Помощь по вашему вопросу:\n\n{response}", reply_markup=keyboards.Student.main)
+            return True
+        except Exception as e:
+            print(f"Ошибка при получении помощи: {e}")
+            self.text_out("Произошла ошибка при получении помощи")
+            return False
+
+    def check_my_solution(self, task: str, my_solution: str):
+        """Проверяет собственное решение с помощью LLM"""
+        try:
+            prompt = f"""
+            Проверь решение ученика.
+            
+            ЗАДАЧА: {task}
+            МОЕ РЕШЕНИЕ: {my_solution}
+            
+            Проанализируй:
+            - Правильность решения
+            - Возможные ошибки
+            - Альтернативные способы решения
+            - Рекомендации по улучшению
+            
+            Формат ответа:
+            ПРАВИЛЬНОСТЬ: [да/нет с объяснением]
+            АНАЛИЗ: [подробный анализ]
+            РЕКОМЕНДАЦИИ: [советы по улучшению]
+            """
+            
+            response = self.llm.request(prompt)
+            self._telegramBot.send_message(self.ID, f"Анализ вашего решения:\n\n{response}", reply_markup=keyboards.Student.main)
+            return True
+        except Exception as e:
+            print(f"Ошибка при проверке решения: {e}")
+            self.text_out("Произошла ошибка при проверке решения")
+            return False
+
+    def get_practice_tasks(self, topic: str, difficulty: str = "средний"):
+        """Получает дополнительные задачи для практики"""
+        try:
+            prompt = f"""
+            Создай 3 математические задачи по теме "{topic}" уровня сложности "{difficulty}".
+            
+            Задачи должны быть:
+            - Соответствовать школьной программе
+            - Иметь разные типы (вычислительные, логические, прикладные)
+            - Включать правильные ответы
+            - Быть интересными и познавательными
+            
+            Формат ответа:
+            ЗАДАЧА 1: [текст задачи]
+            ОТВЕТ 1: [ответ]
+            
+            ЗАДАЧА 2: [текст задачи]
+            ОТВЕТ 2: [ответ]
+            
+            ЗАДАЧА 3: [текст задачи]
+            ОТВЕТ 3: [ответ]
+            """
+            
+            response = self.llm.request(prompt)
+            self._telegramBot.send_message(self.ID, f"Задачи для практики по теме '{topic}':\n\n{response}", reply_markup=keyboards.Student.main)
+            return True
+        except Exception as e:
+            print(f"Ошибка при получении задач: {e}")
+            self.text_out("Произошла ошибка при получении задач")
+            return False
+
+    def get_theory_explanation(self, topic: str):
+        """Получает объяснение теории по теме"""
+        try:
+            prompt = f"""
+            Объясни теорию по теме "{topic}" для школьника.
+            
+            Объяснение должно быть:
+            - Понятным и доступным
+            - Содержать основные понятия
+            - Включать примеры
+            - Структурированным и логичным
+            
+            Формат ответа:
+            ОПРЕДЕЛЕНИЕ: [основные понятия]
+            ТЕОРИЯ: [подробное объяснение]
+            ПРИМЕРЫ: [примеры применения]
+            ВАЖНО: [ключевые моменты для запоминания]
+            """
+            
+            response = self.llm.request(prompt)
+            self._telegramBot.send_message(self.ID, f"Теория по теме '{topic}':\n\n{response}", reply_markup=keyboards.Student.main)
+            return True
+        except Exception as e:
+            print(f"Ошибка при получении теории: {e}")
+            self.text_out("Произошла ошибка при получении теории")
+            return False
+
+    def get_study_plan(self, weak_topics: list):
+        """Получает персональный план обучения"""
+        try:
+            topics_str = ", ".join(weak_topics)
+            prompt = f"""
+            Создай персональный план обучения для ученика, который испытывает трудности с темами: {topics_str}
+            
+            План должен включать:
+            - Последовательность изучения тем
+            - Рекомендуемое время на каждую тему
+            - Практические задания
+            - Критерии успешного освоения
+            - Мотивирующие элементы
+            
+            Формат ответа:
+            ПЛАН ОБУЧЕНИЯ:
+            [пошаговый план]
+            
+            РЕКОМЕНДАЦИИ:
+            [советы по эффективному изучению]
+            """
+            
+            response = self.llm.request(prompt)
+            self._telegramBot.send_message(self.ID, f"Ваш персональный план обучения:\n\n{response}", reply_markup=keyboards.Student.main)
+            return True
+        except Exception as e:
+            print(f"Ошибка при создании плана обучения: {e}")
+            self.text_out("Произошла ошибка при создании плана обучения")
+            return False
+
+    def get_math_tips(self):
+        """Получает полезные советы по математике"""
+        try:
+            prompt = """
+            Дай 5 полезных советов для изучения математики.
+            
+            Советы должны быть:
+            - Практичными и применимыми
+            - Мотивирующими
+            - Подходящими для школьников
+            - Включать конкретные техники
+            
+            Формат ответа:
+            СОВЕТ 1: [описание]
+            СОВЕТ 2: [описание]
+            СОВЕТ 3: [описание]
+            СОВЕТ 4: [описание]
+            СОВЕТ 5: [описание]
+            """
+            
+            response = self.llm.request(prompt)
+            self._telegramBot.send_message(self.ID, f"Полезные советы по математике:\n\n{response}", reply_markup=keyboards.Student.main)
+            return True
+        except Exception as e:
+            print(f"Ошибка при получении советов: {e}")
+            self.text_out("Произошла ошибка при получении советов")
             return False
 
 class Unregistered(User):

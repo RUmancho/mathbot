@@ -43,17 +43,5 @@ class Teacher:
             keyboards.Teacher.main,
         )
 
-    @staticmethod
-    def pin_class():
-        return core.ButtonCollector(
-            {
-                core.Sender("city",         "В каком городе учатся учащиеся? (название города)") : core.Validator.city,
-                core.Sender("school",       "В какой школе?")                                    : core.Validator.school,
-                core.Sender("class_number", "В каком классе? (номер класса и буква)")            : core.Validator.class_number
-            },
-            "поиск...",
-            keyboards.Teacher.main,
-        )
-
 class Student:
     ...

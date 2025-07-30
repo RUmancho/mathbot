@@ -1,0 +1,70 @@
+{
+    "algebra": 
+    {
+        "AMF": 
+        {
+            "difference_of_squares_theory": "src/math/algebra/AMF/difference_of_squares.txt",
+            "square_of_sum_theory": "src/math/algebra/AMF/square_of_the_sum.txt",
+            "square_of_difference_theory": "src/math/algebra/AMF/squared_difference.txt",
+            "cube_of_sum_theory": "src/math/algebra/AMF/cube_of_sum.txt",
+            "cube_of_difference_theory": "src/math/algebra/AMF/cube_of_difference.txt",
+            "sum_of_cubes_theory": "src/math/algebra/AMF/sum_of_cubes.txt",
+            "difference_of_cubes_theory": "src/math/algebra/AMF/difference_of_cubes.txt"
+        },
+        "equations":
+        {
+            "linear_equations_theory": "src/math/algebra/equations/linear_equations.txt",
+            "incomplete_quadratic_type1_theory": "src/math/algebra/equations/incomplete_quadratic_type1.txt",
+            "incomplete_quadratic_type2_theory": "src/math/algebra/equations/incomplete_quadratic_type2.txt",
+            "quadratic_via_discriminant_theory": "src/math/algebra/equations/quadratic_equations_via_discriminant.txt",
+            "quadratic_via_viet_theorem_theory": "src/math/algebra/equations/quadratic_equations_via_Viet_theorem.txt"
+        },
+        "inequalities":
+        {
+            "linear_inequalities_theory": "src/math/algebra/inequalities/linear_inequalities.txt",
+            "quadratic_inequalities_theory": "src/math/algebra/inequalities/quadratic_inequalities.txt"
+        },
+        "expressions":
+        {
+            "square_root_theory": "src/math/algebra/expression/square_root.txt",
+            "power_of_number_theory": "src/math/algebra/expression/power_of_a_number.txt",
+            "power_of_number_image": "src/math/algebra/expression/power_of_a_number.png"
+        },
+        "calculations":
+        {
+            "fractions_theory": "src/math/algebra/calculation/fractions.txt",
+            "fractions_image": "src/math/algebra/calculation/fractions.png"
+        },
+        "graphics":
+        {
+            "straight_line_theory": "src/math/algebra/graphics/straight.txt",
+            "parabola_theory": "src/math/algebra/graphics/parabola.txt",
+            "hyperbola_theory": "src/math/algebra/graphics/hyperbola.txt"
+        },
+        "trigonometry":
+        {
+            "basic_trigonometric_functions_theory": "src/math/algebra/trigonometry/basic_trigonometric_functions.txt",
+            "trigonometric_equations_theory": "src/math/algebra/trigonometry/trigonometric_equations.txt"
+        },
+        "probability_theory": {}
+    },
+    "geometry": 
+    {
+        "figures":
+        {
+            "triangle": "src/math/geometry/треугольник его свойства.docx",
+            "quadrilaterals": "src/math/geometry/четырёхугольники.docx",
+            "parallelogram": "src/math/geometry/параллелограмм.docx",
+            "rhombus": "src/math/geometry/ромб.docx",
+            "square": "src/math/geometry/квадрат .docx",
+            "trapezoid": "src/math/geometry/трапеция.docx",
+            "circle": "src/math/geometry/окружность.docx"
+        },
+        "documents":
+        {
+            "geometry_guide": "src/math/geometry/DOC-20240605-WA0000.pdf"
+        }
+    },
+    "database": "src/users.db",
+    "bad_words": "src/bad_words.txt"
+}

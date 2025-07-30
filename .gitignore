@@ -1,0 +1,6 @@
+src/
+Experimental/
+
+program/.env
+program/__pycache__/
+program/venv/

@@ -57,7 +57,9 @@ class Tables:
         ref = Column(String)
         my_teachers = Column(String)
 
-engine = create_engine(f"sqlite:///{resource.resource['database']}")
+relatative_path_database = f"../{resource.resource['database']}"
+print(relatative_path_database)
+engine = create_engine(f"sqlite:///{relatative_path_database}")
 Base.metadata.create_all(engine)
 
 class Manager:

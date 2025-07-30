@@ -43,7 +43,9 @@ class Resource:
         for path in self.file_handlers.keys():
             sent += 1
             if sent == required_to_send:
-                self.file_handlers[path](path)
+                self.file_handlers[path](path, keyboard = None)
+            else:
+                self.file_handlers[path](path, keyboard = self.keyboard)
 
     def __push_image(self, path: str, keyboard = None, caption: str = None):
         with open(path, 'rb') as file:

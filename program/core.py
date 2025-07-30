@@ -38,29 +38,36 @@ class Resource:
         cls.chat_id = chat_id
 
     def push(self):
+        sent = 0
+        required_to_send = len(self.file_handlers.keys())
         for path in self.file_handlers.keys():
-            self.file_handlers[path](path)
+            sent += 1
+            if sent == required_to_send:
+                self.file_handlers[path](path)
 
-    def __push_image(self, path: str, caption: str = None):
+    def __push_image(self, path: str, keyboard = None, caption: str = None):
         with open(path, 'rb') as file:
-            self.bot.send_photo(self.chat_id, file, caption=caption)
+            self.bot.send_photo(self.chat_id, file, reply_markup = keyboard, caption=caption)
 
-    def __push_document(self, path: str, caption: str = None):
+    def __push_document(self, path: str, keyboard = None, caption: str = None):
         with open(path, 'rb') as file:
-            self.bot.send_document(self.chat_id, file, caption=caption)
+            self.bot.send_document(self.chat_id, file, reply_markup = keyboard, caption=caption)
 
-    def __push_audio(self, path: str, caption: str = None):
+    def __push_audio(self, path: str, keyboard = None, caption: str = None):
         with open(path, 'rb') as file:
-            self.bot.send_audio(self.chat_id, file, caption=caption)
+            self.bot.send_audio(self.chat_id, file, reply_markup = keyboard, caption=caption)
 
-    def __push_video(self, path: str, caption: str = None):
+    def __push_video(self, path: str, keyboard = None, caption: str = None):
         with open(path, 'rb') as file:
-            self.bot.send_video(self.chat_id, file, caption=caption)
+            self.bot.send_video(self.chat_id, file, reply_markup = keyboard, caption=caption)
 
-    def __push_unzipped_text_document(self, path: str, caption: str = None):
+    def __push_unzipped_text_document(self, path: str, keyboard = None, caption: str = None):
         with open(path, 'r', encoding='utf-8') as file:
             text = file.read()
-            self.bot.send_message(self.chat_id, f"{caption}\n{text}" if caption else text)
+
+            if caption is not None:
+                caption = f"\n{caption}\"\n"
+            self.bot.send_message(self.chat_id, f"{caption}\n{text}", reply_markup = keyboard)
 
 
 class Sender:

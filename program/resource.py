@@ -5,14 +5,20 @@ colorama.init()
 
 resource = {}
 
-with open("program/resourse.json", "r", encoding="utf-8") as file:
+with open("resource.json", "r", encoding="utf-8") as file:
     resource = json.load(file)
 
 if resource == {}:
     print(colorama.Fore.RED + "Ошибка: файл resourse.json пуст")
     exit()
 
+def file_availability(relative_path: str) -> bool:
+  """ Проверяет существование файла по относительному пути."""
+  full_path = os.path.abspath(relative_path)
+  return os.path.isfile(full_path)
+
 def get_values_from_json(json_data):
+    """Функция для получения всех значений из JSON-данных"""
     values = []
     
     if isinstance(json_data, dict):
@@ -31,7 +37,7 @@ paths = get_values_from_json(resource)
 error = False
 
 for path in paths:
-    if not os.path.exists(path):
+    if not file_availability(path):
         print(f"{colorama.Fore.RED}File path not found:  {path}")
         error = True
 print(colorama.Fore.WHITE)

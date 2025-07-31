@@ -1,46 +1,34 @@
-from typing import Optional
-from utils import ChatOpenAI
-from langchain.prompts import PromptTemplate
-import langchain.memory
-import config
+from langchain_ollama import OllamaLLM 
 
 class LLM:
+    ROLES = {
+        "school teacher" : "you are a school teacher and you need to "
+    }
+
     def __init__(self):
-        """Initialize the LLM with model and memory."""
-        self.model = ChatOpenAI(temperature=0.0, course_api_key=config.LLM_API_KEY)
-        self.memory = langchain.memory.ConversationSummaryBufferMemory(llm=self.model)
+        self.model = OllamaLLM(model="phi")
 
-    def clear_memory(self) -> None:
-        """Clear the conversation memory."""
-        self.memory.clear()
+        self.role = ""
+        self.task = ""
+        self.prompt = f""
 
-    def load_chat(self, input_text: str, output_text: str) -> None:
-        self.memory.save_context({"input": input_text}, {"output": output_text})
+    def set_role(self, role: str) -> str:
+        if role not in self.ROLES:
+            raise "unsupported model role selected"
+        self.role = self.ROLES[role]
+        self.prompt = f"{self.role} {self.task}"
+        return self.prompt
 
-    def request(self, question: str, context: Optional[str] = None, answer: Optional[str] = None) -> str:
-        template_request = """
-        {history}
-        question: {question}
-        context: {context}
-        answer: {answer}
-        """
+    def how_to_solve(self, topic) -> str:
+        self.task = f"explain to a student, briefly, simply and without complex terms, step by step, how to solve {topic}"
+        self.prompt = f"{self.role}{self.task}"
+        return self.prompt
 
-        request_template = PromptTemplate(
-            input_variables=["history", "question", "context", "answer"],
-            template=template_request
-        )
-
-        history = self.memory.load_memory_variables({})['history']
-
-        prompt = request_template.format(
-            history=history,
-            question=question,
-            context=context or "",
-            answer=answer or ""
-        )
-        
-        response = self.model.invoke(prompt).content
-        self.load_chat(question, response)
-
+    def request(self) -> str:
+        response = self.model.invoke(self.prompt)
         return response
-    
+
+# model = LLM()
+# model.set_role("school teacher")
+# model.how_to_solve("linear equations")
+# print(model.prompt) 

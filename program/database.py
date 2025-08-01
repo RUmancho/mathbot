@@ -58,7 +58,6 @@ class Tables:
         my_teachers = Column(String)
 
 relatative_path_database = f"../{resource.resource['database']}"
-print(relatative_path_database)
 engine = create_engine(f"sqlite:///{relatative_path_database}")
 Base.metadata.create_all(engine)
 

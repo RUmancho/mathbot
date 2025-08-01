@@ -80,15 +80,15 @@ def handle_teacher_commands(request: str):
         teacher.search_class()
     elif request == "ваши учащиеся":
         teacher.show_my_students()
-    elif request == "задать задание":
+    elif request == "отправить задание":
         teacher.assign_homework()
     elif request == "проверить задания":
         teacher.check_tasks()
-    elif request == "индивидуальное задание":
+    elif request == "отправить индивидуальное задание":
         teacher.assign_individual_task()
-    elif request == "задать задание классу":
+    elif request == "отправить задание классу":
         teacher.assign_class_task()
-    elif request == "индивидуальные задания":
+    elif request == "проверить индивидуальные задания":
         teacher.check_individual_tasks()
     elif request == "задания для класса":
         teacher.check_class_tasks()

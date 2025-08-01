@@ -81,7 +81,7 @@ class Teacher(Registered):
         self.ref = f"tg://user?id={self.ID}"
         self.llm = LLM()  # Инициализация LLM для учителя
 
-        self.searchClass = Button(btn.Teacher.pin_class().data_input, self.__search_class)
+        self.searchClass = Button(btn.Teacher.search_class().data_input, self.__search_class)
     
     def show_main_menu(self):
         self.text_out("главное меню", keyboards.Teacher.main)

@@ -94,15 +94,4 @@ class LLM:
         matches = re.findall(r"-?\d+\.?\d*", text)
         return matches[0] if matches else "Could not extract number"
 
-# Примеры использования:
-model = LLM()
-model.set_role("math teacher")
-
-# 1. Расчет - получаем только число
-print(model.calculate("10 squared"))  # 100
-
-# 2. Объяснение концепции
-print(model.explain("Pythagorean theorem"))
-
-# 3. Краткий ответ на вопрос
-print(model.ask("What is the derivative of x^2?"))
+phi_llm = LLM()

@@ -681,12 +681,10 @@ class Unregistered(User):
 
     def __init__(self, myID: str = "", telegramBot = None):
         super().__init__(myID, telegramBot)
-        self.myID = myID
-        self.telegramBot = telegramBot
         self.current_registration = None
 
     def __registration(self, enterData, role):
-        user_record = Tables.Users(**enterData, telegram_id=self.myID, role=role)
+        user_record = Tables.Users(**enterData, telegram_id=self.ID, role=role)
         Manager.write(user_record)
 
     def teacher_registration(self):

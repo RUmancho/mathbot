@@ -2,7 +2,7 @@ from langchain_ollama import OllamaLLM
 
 class LLM:
     ROLES = {
-        "school teacher" : "you are a school teacher and you need to "
+        "math teacher" : "you are a school math teacher and you need to "
     }
 
     def __init__(self):
@@ -26,7 +26,12 @@ class LLM:
 
     def ask_a_question(self, question):
         self.task = f"answer the question: {question}"
-        self.prompt = self.task
+        self.prompt = f"{self.role}{self.task}"
+        return self.prompt
+    
+    def calculate(self, expression):
+        self.task = f"calculate {expression}. The answer must contain only a number."
+        self.prompt = f"{self.role}{self.task}"
         return self.prompt
 
     def request(self) -> str:
@@ -34,6 +39,8 @@ class LLM:
         return response
 
 model = LLM()
-model.set_role("school teacher")
-model.how_to_solve("linear equations")
-# print(model.prompt) 
+model.set_role("math teacher")
+model.calculate("what is ten squared?")
+print(model.prompt) 
+compute = model.request()
+print(compute)

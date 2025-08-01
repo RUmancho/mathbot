@@ -1,9 +1,21 @@
 from langchain_ollama import OllamaLLM 
 import re
+from enum import Enum, auto
+
+class ResponseType(Enum):
+    CALCULATION = auto()  # Только числовой ответ
+    EXPLANATION = auto()  # Развернутое объяснение
+    CONCISE = auto()      # Краткий ответ
+
 
 class LLM:
     ROLES = {
-        "math teacher": "You are a helpful math assistant. Your task is to provide only the final numerical answer without any explanations or additional text. Just return the number."
+        "math teacher": {
+            "base": "You are a helpful math teacher.",
+            "calculation": "Provide ONLY the final numerical answer without ANY explanations or additional text. Just the number.",
+            "explanation": "Explain the concept in detail with examples, step by step.",
+            "concise": "Give a brief and clear answer to the question."
+        }
     }
 
     def __init__(self):
@@ -11,46 +23,86 @@ class LLM:
         self.role = ""
         self.task = ""
         self.prompt = ""
+        self.response_type = ResponseType.EXPLANATION  # По умолчанию объяснение
 
-    def set_role(self, role: str) -> str:
+    def set_role(self, role: str) -> None:
         if role not in self.ROLES:
             raise ValueError("Unsupported model role selected")
-        self.role = self.ROLES[role]
-        self._update_prompt()
-        return self.prompt
+        self.role = self.ROLES[role]["base"]
 
-    def calculate(self, expression) -> str:
-        # Преобразуем текстовое описание в математическое выражение
+    def set_response_type(self, response_type: ResponseType) -> None:
+        self.response_type = response_type
+
+    def calculate(self, expression: str) -> str:
+        """Для математических вычислений"""
+        self.response_type = ResponseType.CALCULATION
         expression = self._normalize_expression(expression)
-        self.task = f" calculate: {expression}. Return only the number, nothing else."
+        self.task = f"Calculate: {expression}"
         self._update_prompt()
-        return self.prompt
+        return self.request()
 
-    def _normalize_expression(self, expr: str) -> str:
-        """Преобразует текстовые описания в математические выражения"""
-        expr = expr.lower().strip()
-        expr = expr.replace("squared", "^2")
-        expr = expr.replace("cubed", "^3")
-        expr = expr.replace("to the power of", "^")
-        return expr
+    def explain(self, topic: str) -> str:
+        """Для объяснения концепций"""
+        self.response_type = ResponseType.EXPLANATION
+        self.task = f"Explain: {topic}"
+        self._update_prompt()
+        return self.request()
 
-    def _extract_number(self, text: str) -> str:
-        """Извлекает число из текста ответа"""
-        # Ищем числа, включая десятичные и отрицательные
-        matches = re.findall(r"-?\d+\.?\d*", text)
-        return matches[0] if matches else text
+    def ask(self, question: str) -> str:
+        """Для кратких ответов на вопросы"""
+        self.response_type = ResponseType.CONCISE
+        self.task = f"Answer: {question}"
+        self._update_prompt()
+        return self.request()
 
     def _update_prompt(self):
-        self.prompt = f"{self.role}{self.task}"
+        """Формируем промпт в зависимости от типа ответа"""
+        if self.response_type == ResponseType.CALCULATION:
+            instruction = self.ROLES["math teacher"]["calculation"]
+        elif self.response_type == ResponseType.EXPLANATION:
+            instruction = self.ROLES["math teacher"]["explanation"]
+        else:
+            instruction = self.ROLES["math teacher"]["concise"]
+        
+        self.prompt = f"{self.role} {instruction} {self.task}"
+
+    def _normalize_expression(self, expr: str) -> str:
+        """Преобразуем текстовые описания в математические выражения"""
+        expr = expr.lower().strip()
+        replacements = {
+            "squared": "^2",
+            "cubed": "^3",
+            "to the power of": "^",
+            "square root of": "sqrt",
+            "divided by": "/",
+            "times": "*"
+        }
+        for k, v in replacements.items():
+            expr = expr.replace(k, v)
+        return expr
 
     def request(self) -> str:
         response = self.model.invoke(self.prompt)
-        # Извлекаем только числовой ответ
-        return self._extract_number(response)
+        
+        # Для расчетов извлекаем только число
+        if self.response_type == ResponseType.CALCULATION:
+            return self._extract_number(response)
+        return response
 
-# Пример использования
+    def _extract_number(self, text: str) -> str:
+        """Извлекает число из текста ответа"""
+        matches = re.findall(r"-?\d+\.?\d*", text)
+        return matches[0] if matches else "Could not extract number"
+
+# Примеры использования:
 model = LLM()
 model.set_role("math teacher")
-model.calculate("10 squared")  # Теперь вернёт только "100"
-compute = model.request()
-print(compute)  # Выведет: 100
+
+# 1. Расчет - получаем только число
+print(model.calculate("10 squared"))  # 100
+
+# 2. Объяснение концепции
+print(model.explain("Pythagorean theorem"))
+
+# 3. Краткий ответ на вопрос
+print(model.ask("What is the derivative of x^2?"))

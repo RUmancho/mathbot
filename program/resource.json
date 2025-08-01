@@ -11,6 +11,14 @@
             "sum_of_cubes_theory": "src/math/algebra/AMF/sum_of_cubes.txt",
             "difference_of_cubes_theory": "src/math/algebra/AMF/difference_of_cubes.txt"
         },
+        "quick_solutions":
+        {
+            "factored_equation_theory": "src/math/algebra/quick_solutions/factored_equation.txt"
+        },
+        "common_mistakes":
+        {
+
+        },
         "equations":
         {
             "linear_equations_theory": "src/math/algebra/equations/linear_equations.txt",

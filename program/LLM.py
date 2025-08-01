@@ -24,11 +24,16 @@ class LLM:
         self.prompt = f"{self.role}{self.task}"
         return self.prompt
 
+    def ask_a_question(self, question):
+        self.task = f"answer the question: {question}"
+        self.prompt = self.task
+        return self.prompt
+
     def request(self) -> str:
         response = self.model.invoke(self.prompt)
         return response
 
-# model = LLM()
-# model.set_role("school teacher")
-# model.how_to_solve("linear equations")
+model = LLM()
+model.set_role("school teacher")
+model.how_to_solve("linear equations")
 # print(model.prompt) 

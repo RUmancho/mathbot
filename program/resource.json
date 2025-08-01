@@ -13,11 +13,7 @@
         },
         "quick_solutions":
         {
-            "factored_equation_theory": "src/math/algebra/quick_solutions/factored_equation.txt"
-        },
-        "common_mistakes":
-        {
-
+            "factored_equation_theory": "src/math/algebra/quick_solutions/factored_equations.txt"
         },
         "equations":
         {

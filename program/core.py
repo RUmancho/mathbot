@@ -4,7 +4,7 @@ import telebot
 import config
 colorama.init()
 
-class Resource:
+class ResourceChain:
     IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp"]
     DOCUMENT_EXTENSIONS = ["doc", "docx", "pdf", "xlsx", "xls", "ppt", "pptx", "txt"]
     AUDIO_EXTENSIONS = ["mp3", "wav", "ogg", "m4a", "aac", "flac"]

@@ -29,7 +29,7 @@ class Process:
     _bot = telebot.TeleBot(config.BOT_TOKEN)
 
     def __init__(self, ID):
-        self._ID = ID
+        self._me = UserRecognizer(ID)
         self._chain = []
         self._max_i = len(self._chain) - 1
         self._i = 0
@@ -45,33 +45,36 @@ class Process:
         self._is_active = False
 
     def execute(self):
-        result = self._chain[self._i]()
-        if result:
+        try:
+            self._chain[self._i]()
             if self._i <= self._max_i:
                 self._i += 1 
-            else:
-                self._i = 0
-
+        except:
+            ...
 
 class DeleteProfile(Process):
     def __init__(self, ID):
+        super().__init__(ID)
         self._chain = [self.ask_for_password, self.password_entry_verification]
-        self.__me = UserRecognizer(ID)
 
-    def __delete_accout(self):
-        Manager.delete_record(Tables.Users, "telegram_id", self.__me.get_ID())
+    def _delete_accout(self):
+        Manager.delete_record(Tables.Users, "telegram_id", self._me.get_ID())
 
-    def __password_entry_error_message(self):
-        self._bot.send_message(self._ID, "Неверный пароль, повторите попытку")
+    def _password_entry_error_message(self):
+        self._bot.send_message(self._me.get_ID(), "Неверный пароль, повторите попытку")
+    
+    def _successful_profile_deletion_message(self):
+        self._bot.send_message(self._me.get_ID(), "Профиль удалён")
 
     def ask_for_password(self):
-        self._bot.send_message(self._ID, "Введите ваш пароль для удаления профиля")
+        self._bot.send_message(self._me.get_ID(), "Введите ваш пароль для удаления профиля")
 
     def password_entry_verification(self):
-        if self._current_request == self.__me.password:
-            self.__delete_accout()
+        if self._current_request == self._me.password:
+            self._successful_profile_deletion_message()
+            self._delete_accout()
         else:
-            self.__password_entry_error_message()
+            self._password_entry_error_message()
             raise ValueError("password entry error")
 
 

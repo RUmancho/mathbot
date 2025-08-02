@@ -30,19 +30,25 @@ class UserRecognizer:
 
 
 class Process:
+    CANCEL_KEYWORD = "отмена"
     _bot = telebot.TeleBot(config.BOT_TOKEN)
 
-    def __init__(self, ID):
+    def __init__(self, ID, cancelable = True):
         self._me = UserRecognizer(ID)
         self._chain = []
         self._max_i = len(self._chain) - 1
         self._i = 0
         self._is_active = False
+        self._cancelable = cancelable
 
         self._current_request = ""
 
     def update_last_request(self, request):
         self._current_request = request
+
+        if self._cancelable:
+            if self._current_request == self.CANCEL_KEYWORD:
+                self.stop
 
     def stop(self):
         self._i = 0
@@ -55,31 +61,6 @@ class Process:
                 self._i += 1 
         except UserInputError as e:
             print(f"Пользователь {self._me.name} неверно ввёл запрошенные данные")
-
-class DeleteProfile(Process):
-    def __init__(self, ID):
-        super().__init__(ID)
-        self._chain = [self.ask_for_password, self.password_entry_verification]
-
-    def _delete_account(self):
-        Manager.delete_record(Tables.Users, "telegram_id", self._me.get_ID())
-
-    def _password_entry_error_message(self):
-        self._bot.send_message(self._me.get_ID(), "Неверный пароль, повторите попытку")
-    
-    def _successful_profile_deletion_message(self):
-        self._bot.send_message(self._me.get_ID(), "Профиль удалён")
-
-    def ask_for_password(self):
-        self._bot.send_message(self._me.get_ID(), "Введите ваш пароль для удаления профиля")
-
-    def password_entry_verification(self):
-        if self._current_request == self._me.password:
-            self._successful_profile_deletion_message()
-            self._delete_account()
-        else:
-            self._password_entry_error_message()
-            raise UserInputError("password entry error")
 
 
 class FileSender:

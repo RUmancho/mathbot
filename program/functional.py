@@ -36,10 +36,35 @@ class User:
 
 
 class Registered(User):
+    class DeleteProfile(core.Process):
+        def __init__(self, ID, cancelable = True):
+            super().__init__(ID, cancelable)
+            self._chain = [self.ask_for_password, self.password_entry_verification]
+
+        def _delete_account(self):
+            Manager.delete_record(Tables.Users, "telegram_id", self._me.get_ID())
+
+        def _password_entry_error_message(self):
+            self._bot.send_message(self._me.get_ID(), "Неверный пароль, повторите попытку")
+        
+        def _successful_profile_deletion_message(self):
+            self._bot.send_message(self._me.get_ID(), "Профиль удалён")
+
+        def ask_for_password(self):
+            self._bot.send_message(self._me.get_ID(), "Введите ваш пароль для удаления профиля")
+
+        def password_entry_verification(self):
+            if self._current_request == self._me.password:
+                self._successful_profile_deletion_message()
+                self._delete_account()
+            else:
+                self._password_entry_error_message()
+                raise core.UserInputError("password entry error")
+            
     def __init__(self, ID: str = "", telegramBot = None):
         super().__init__(ID, telegramBot)
 
-
+        delete_profile_process = self.DeleteProfile(ID)
 
 class Teacher(Registered):
     def __init__(self, myID: str = "", telegramBot = None):

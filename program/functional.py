@@ -11,19 +11,17 @@ class User:
     SHOW_MAIN_MENU = ["главная", "меню", "/меню", "/главная"]
 
     def __init__(self, ID, telegramBot = None):
+        self.info = core.UserRecognizer(ID)
         self._ID = ID
         self._telegramBot = telegramBot
         self._current_request = None
         self._current_command = None
 
-    def get_ID(self):
-        return self._ID
-
     def unsupported_command_warning(self):
         self.text_out("Неизвестная команда")
 
     def text_out(self, text: str, markup = None):
-        self._telegramBot.send_message(self.ID, text = text, reply_markup=markup)
+        self._telegramBot.send_message(self._ID, text = text, reply_markup=markup)
 
     def update_last_request(self, request):
         self._current_request = request
@@ -31,11 +29,6 @@ class User:
     @staticmethod
     def registered_users_IDS() -> list:
         search = Manager.get_column(Tables.Users.telegram_id)
-        return search
-
-    @staticmethod
-    def find_my_role(ID) -> str:
-        search = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == ID, "role")
         return search
     
     def command_executor(self):
@@ -76,6 +69,8 @@ class Registered(User):
     def delete_account(self):
         self.current_command = self.delete_profile_process.execute
 
+
+ 
     
 
 
@@ -465,7 +460,7 @@ class Unregistered(User):
     def show_main_menu(self):
         self.text_out("главное меню", keyboards.Guest.main)
         return True
-    
+
 
 class NewUser():
     def __init__(self, bind_bot):
@@ -473,11 +468,6 @@ class NewUser():
 
     def set_ID(self, ID):
         self._ID = ID
-    
-    def set_user_type(self, user_type: type['Teacher | Student | Unregistered']):
-        if user_type not in [Teacher, Student, Unregistered]:
-            raise TypeError("Invalid user type")
-        self.user = user_type(self._ID, self.bot)
-    
-    def __getattribute__(self, name):
-        return super().__getattribute__(self.user.__dict__[name])
+
+    def set_user_type(self, new: Teacher | Student | Unregistered):
+        self.__dict__ = new(self._ID, self.bot).__dict__

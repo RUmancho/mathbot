@@ -447,3 +447,10 @@ def extractor(collection: list[dict], key) -> list:
 def file_extension(path: str) -> str:
     """Определяет расширение файла"""
     return path.split(".")[-1]
+
+def transform_request(request: str):
+    """переводит регистр строки в нижний, а также заменяет букву "ё" на "е" """
+    request = request.lower().strip()
+    if "ё" in request:
+        request = request.replace("ё", "е")
+    return request

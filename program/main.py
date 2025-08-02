@@ -30,13 +30,13 @@ def main(msg):
         if role == "ученик":
             student.ID = ID
             student.update_last_request(request)
-            student.load_user()
+            student.recognize_user()
             handle_student_commands(request)
 
         elif role == "учитель":
             teacher.ID = ID
             teacher.update_last_request(request)
-            teacher.load_user()
+            teacher.recognize_user()
             handle_teacher_commands(request)
     else:
         print(f"Пользователь НЕ зарегистрирован, обрабатываем как незарегистрированный")

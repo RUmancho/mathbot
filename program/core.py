@@ -4,35 +4,78 @@ import telebot
 import config
 colorama.init()
 
+class UserRecognizer:
+    def __init__(self, ID: str):
+        self.__ID = ID
+        self.name = self.__reader("name")
+        self.surname = self.__reader("surname")
+        self.password = self.__reader("password")
+        self.role = self.__reader("role")
+
+        if self.role == "ученик":
+            self.city = self.__reader("city")
+            self.school = self.__reader("school")
+            self.class_number = self.__reader("school_number")
+
+    def get_ID(self):
+        return self.__ID
+
+    def __reader(self, column: str):
+        search = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self.__ID, column)
+        return search
+
+
 class Process:
-    def __init__(self):
-        self.is_active = False
-        self.chain = []
-        self.i = 0
-        self.max_i = len(self.chain) - 1
+    _bot = telebot.TeleBot(config.BOT_TOKEN)
+
+    def __init__(self, ID):
+        self._ID = ID
+        self._chain = []
+        self._max_i = len(self._chain) - 1
+        self._i = 0
+        self._is_active = False
+
+        self._current_request = ""
+
+    def update_last_request(self, request):
+        self._current_request = request
 
     def stop(self):
-        self.i = 0
-        self.is_active = False
+        self._i = 0
+        self._is_active = False
 
-    def run(self):
-        result = self.chain[self.i]()
+    def execute(self):
+        result = self._chain[self._i]()
         if result:
-            if self.i <= self.max_i:
-                self.i += 1 
+            if self._i <= self._max_i:
+                self._i += 1 
             else:
-                self.i = 0
+                self._i = 0
 
-class RegistrationTeacher(Process):
-    def __init__(self):
-        self.chain = [self.start]
 
-    def start(self):
-        ...
+class DeleteProfile(Process):
+    def __init__(self, ID):
+        self._chain = [self.ask_for_password, self.password_entry_verification]
+        self.__me = UserRecognizer(ID)
 
-        
+    def __delete_accout(self):
+        Manager.delete_record(Tables.Users, "telegram_id", self.__me.get_ID())
 
-class ResourceChain:
+    def __password_entry_error_message(self):
+        self._bot.send_message(self._ID, "Неверный пароль, повторите попытку")
+
+    def ask_for_password(self):
+        self._bot.send_message(self._ID, "Введите ваш пароль для удаления профиля")
+
+    def password_entry_verification(self):
+        if self._current_request == self.__me.password:
+            self.__delete_accout()
+        else:
+            self.__password_entry_error_message()
+            raise ValueError("password entry error")
+
+
+class FileSender:
     IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp"]
     DOCUMENT_EXTENSIONS = ["doc", "docx", "pdf", "xlsx", "xls", "ppt", "pptx", "txt"]
     AUDIO_EXTENSIONS = ["mp3", "wav", "ogg", "m4a", "aac", "flac"]

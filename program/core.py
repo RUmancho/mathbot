@@ -4,23 +4,27 @@ import telebot
 import config
 colorama.init()
 
+class UserInputError(Exception):
+    """Вызывается при некорректно введённых данных"""
+
+
 class UserRecognizer:
     def __init__(self, ID: str):
         self._ID = ID
-        self.name = self.__reader("name")
-        self.surname = self.__reader("surname")
-        self.password = self.__reader("password")
-        self.role = self.__reader("role")
+        self.name = self._reader("name")
+        self.surname = self._reader("surname")
+        self.password = self._reader("password")
+        self.role = self._reader("role")
 
         if self.role == "ученик":
-            self.city = self.__reader("city")
-            self.school = self.__reader("school")
-            self.class_number = self.__reader("school_number")
+            self.city = self._reader("city")
+            self.school = self._reader("school")
+            self.class_number = self._reader("school_number")
 
     def get_ID(self):
         return self._ID
 
-    def __reader(self, column: str):
+    def _reader(self, column: str):
         search = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, column)
         return search
 
@@ -49,15 +53,15 @@ class Process:
             self._chain[self._i]()
             if self._i <= self._max_i:
                 self._i += 1 
-        except:
-            ...
+        except UserInputError as e:
+            print(f"Пользователь {self._me.name} неверно ввёл запрошенные данные")
 
 class DeleteProfile(Process):
     def __init__(self, ID):
         super().__init__(ID)
         self._chain = [self.ask_for_password, self.password_entry_verification]
 
-    def _delete_accout(self):
+    def _delete_account(self):
         Manager.delete_record(Tables.Users, "telegram_id", self._me.get_ID())
 
     def _password_entry_error_message(self):
@@ -72,10 +76,10 @@ class DeleteProfile(Process):
     def password_entry_verification(self):
         if self._current_request == self._me.password:
             self._successful_profile_deletion_message()
-            self._delete_accout()
+            self._delete_account()
         else:
             self._password_entry_error_message()
-            raise ValueError("password entry error")
+            raise UserInputError("password entry error")
 
 
 class FileSender:

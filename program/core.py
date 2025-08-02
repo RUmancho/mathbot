@@ -6,7 +6,7 @@ colorama.init()
 
 class UserRecognizer:
     def __init__(self, ID: str):
-        self.__ID = ID
+        self._ID = ID
         self.name = self.__reader("name")
         self.surname = self.__reader("surname")
         self.password = self.__reader("password")
@@ -18,10 +18,10 @@ class UserRecognizer:
             self.class_number = self.__reader("school_number")
 
     def get_ID(self):
-        return self.__ID
+        return self._ID
 
     def __reader(self, column: str):
-        search = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self.__ID, column)
+        search = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, column)
         return search
 
 

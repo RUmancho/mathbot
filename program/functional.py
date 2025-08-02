@@ -5,15 +5,19 @@ import keyboards
 import core
 from LLM import LLM
 
+
 class User:
     RUN_BOT_COMMADS = ["/start"]
     SHOW_MAIN_MENU = ["главная", "меню", "/меню", "/главная"]
 
-    def __init__(self, ID: str = "", telegramBot = None):
-        self.ID = ID
+    def __init__(self, ID, telegramBot = None):
+        self._ID = ID
         self._telegramBot = telegramBot
-        self.current_request = None
-        self.current_command = None
+        self._current_request = None
+        self._current_command = None
+
+    def get_ID(self):
+        return self._ID
 
     def unsupported_command_warning(self):
         self.text_out("Неизвестная команда")
@@ -22,7 +26,7 @@ class User:
         self._telegramBot.send_message(self.ID, text = text, reply_markup=markup)
 
     def update_last_request(self, request):
-        self.current_request = request
+        self._current_request = request
 
     @staticmethod
     def registered_users_IDS() -> list:
@@ -35,7 +39,7 @@ class User:
         return search
     
     def command_executor(self):
-        self.current_command()
+        self._current_command()
 
 
 class Registered(User):
@@ -374,15 +378,12 @@ class Student(Registered):
             self.text_out("Произошла ошибка при отправке решения")
             return False
 
-   
- 
-   
     
 class Unregistered(User):
     START_MESSAGE = "Здравствуйте, этот бот даст теорию по математике, для его полного использования нужно зарегестрироваться"
 
-    def __init__(self, myID: str = "", telegramBot = None):
-        super().__init__(myID, telegramBot)
+    def __init__(self, myID: str = "", bind_bot = None):
+        super().__init__(myID, bind_bot)
         self.current_registration = None
 
     def __registration(self, enterData, role):
@@ -427,7 +428,7 @@ class Unregistered(User):
         """Обрабатывает ввод во время регистрации"""
         if self.current_registration and not self.current_registration.registration_finished:
             try:
-                self.current_registration.request(self.current_request)
+                self.current_registration.request(self._current_request)
                 self.current_registration.run()
                 
                 # Если регистрация завершена, завершаем процесс
@@ -464,3 +465,19 @@ class Unregistered(User):
     def show_main_menu(self):
         self.text_out("главное меню", keyboards.Guest.main)
         return True
+    
+
+class NewUser():
+    def __init__(self, bind_bot):
+        self.bot = bind_bot
+
+    def set_ID(self, ID):
+        self._ID = ID
+    
+    def set_user_type(self, user_type: type['Teacher | Student | Unregistered']):
+        if user_type not in [Teacher, Student, Unregistered]:
+            raise TypeError("Invalid user type")
+        self.user = user_type(self._ID, self.bot)
+    
+    def __getattribute__(self, name):
+        return super().__getattribute__(self.user.__dict__[name])

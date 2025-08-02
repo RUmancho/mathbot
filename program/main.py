@@ -7,9 +7,7 @@ import core
 bot = telebot.TeleBot(config.BOT_TOKEN)
 core.ButtonCollector.set_bot(bot)
 
-teacher = functional.Teacher(telegramBot=bot)
-student = functional.Student(telegramBot=bot)
-unregistered = functional.Unregistered(telegramBot=bot)
+me = functional.NewUser(bot)
 
 def transform_request(request: str):
     request = request.lower().strip()
@@ -19,111 +17,107 @@ def transform_request(request: str):
 
 @bot.message_handler()
 def main(msg):
-    global teacher, student, unregistered
+    global me
     request = transform_request(msg.text)
     ID = str(msg.chat.id)
+    me.set_ID(ID)
+    me.update_last_request(request)
     
     if ID in functional.User.registered_users_IDS():
         role = functional.User.find_my_role(ID)
         print(f"Пользователь зарегистрирован, роль: {role}")
 
         if role == "ученик":
-            student.ID = ID
-            student.update_last_request(request)
-            student.recognize_user()
+            me.set_user_type(functional.Student)
             handle_student_commands(request)
 
         elif role == "учитель":
-            teacher.ID = ID
-            teacher.update_last_request(request)
-            teacher.recognize_user()
+            me.set_user_type(functional.Teacher)
             handle_teacher_commands(request)
     else:
+        me.set_user_type(functional.Unregistered)
         print(f"Пользователь НЕ зарегистрирован, обрабатываем как незарегистрированный")
-        unregistered.ID = ID
-        unregistered.update_last_request(request)
         handle_unregistered_commands(request)
 
 def handle_student_commands(request: str):
-    is_response = theory.handler(request, student.text_out, student.ID)
+    is_response = theory.handler(request, me.text_out, me.get_ID())
     
     if is_response: ...
 
-    elif request in student.SHOW_MAIN_MENU:
-        student.show_main_menu()
+    elif request in me.SHOW_MAIN_MENU:
+        me.show_main_menu()
     elif request == "профиль":
-        student.show_profile_actions()
+        me.show_profile_actions()
     elif request == "заявки":
-        student.show_applications()
+        me.show_applications()
     elif request == "мои учителя":
-        student.show_my_teachers()
+        me.show_my_teachers()
     elif request == "задания":
-        student.show_tasks()
+        me.show_tasks()
     elif request == "получить задания":
-        student.get_tasks()
+        me.get_tasks()
     elif request == "отправить решение":
-        student.submit_solution()
+        me.submit_solution()
     else:
-        student.unsupported_command_warning()
+        me.unsupported_command_warning()
 
 def handle_teacher_commands(request: str):
     print(f"Обработка команды учителя: '{request}'")
-    is_response = theory.handler(request, teacher.text_out, teacher.ID)
+    is_response = theory.handler(request, me.text_out, me.get_ID())
     
     if is_response: ...
-
-    elif request in teacher.SHOW_MAIN_MENU:
-        teacher.show_main_menu()
+    elif request in me.SHOW_MAIN_MENU:
+        me.show_main_menu()
     elif request == "профиль":
-        teacher.show_profile_actions()
+        me.show_profile_actions()
     elif request == "прикрепить класс":
-        teacher.search_class()
+        me.search_class()
     elif request == "ваши учащиеся":
-        teacher.show_my_students()
+        me.show_my_students()
     elif request == "отправить задание":
-        teacher.assign_homework()
+        me.assign_homework()
     elif request == "проверить задания":
-        teacher.check_tasks()
+        me.check_tasks()
     elif request == "отправить индивидуальное задание":
-        teacher.assign_individual_task()
+        me.assign_individual_task()
     elif request == "отправить задание классу":
-        teacher.assign_class_task()
+        me.assign_class_task()
     elif request == "проверить индивидуальные задания":
-        teacher.check_individual_tasks()
+        me.check_individual_tasks()
     elif request == "задания для класса":
-        teacher.check_class_tasks()
+        me.check_class_tasks()
     elif request == "удалить профиль":
-        teacher.delete_account()
+        me.delete_account()
     else:
-        teacher.unsupported_command_warning()
+        me.unsupported_command_warning()
     
-    teacher.command_executor()
+    me.command_executor()
 
 def handle_unregistered_commands(request: str):
-    is_response = theory.handler(request, unregistered.text_out, unregistered.ID)
+    is_response = theory.handler(request, me.text_out, me.get_ID())
     
     if is_response: ...
 
-    elif request in unregistered.RUN_BOT_COMMADS:
-        unregistered.current_command = unregistered.getting_started
-        unregistered.command_executor()
+    elif request in me.RUN_BOT_COMMADS:
+        me.current_command = me.getting_started
+        me.command_executor()
 
-    elif request in unregistered.SHOW_MAIN_MENU:
-        unregistered.current_command = unregistered.show_main_menu
-        unregistered.command_executor()
+    elif request in me.SHOW_MAIN_MENU:
+        me.current_command = me.show_main_menu
+        me.command_executor()
 
     elif request == "зарегестрироваться как учитель":
-        unregistered.current_command = unregistered.teacher_registration
-        unregistered.command_executor()
+        me.current_command = me.teacher_registration
+        me.command_executor()
 
     elif request == "зарегестрироваться как ученик":
-        unregistered.current_command = unregistered.student_registration
-        unregistered.command_executor()
+        me.current_command = me.student_registration
+        me.command_executor()
     
-    elif unregistered.current_registration and not unregistered.current_registration.registration_finished:
-        unregistered.handle_registration_input()
+    elif me.current_registration and not me.current_registration.registration_finished:
+        me.handle_registration_input()
     else:
-        unregistered.unsupported_command_warning()
+        me.unsupported_command_warning()
 
 if __name__ == "__main__":
     bot.polling(none_stop=True, timeout = 60)

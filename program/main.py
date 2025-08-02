@@ -92,8 +92,12 @@ def handle_teacher_commands(request: str):
         teacher.check_individual_tasks()
     elif request == "задания для класса":
         teacher.check_class_tasks()
+    elif request == "удалить профиль":
+        teacher.delete_account()
     else:
         teacher.unsupported_command_warning()
+    
+    teacher.command_executor()
 
 def handle_unregistered_commands(request: str):
     is_response = theory.handler(request, unregistered.text_out, unregistered.ID)
@@ -102,19 +106,19 @@ def handle_unregistered_commands(request: str):
 
     elif request in unregistered.RUN_BOT_COMMADS:
         unregistered.current_command = unregistered.getting_started
-        unregistered.execute()
+        unregistered.command_executor()
 
     elif request in unregistered.SHOW_MAIN_MENU:
         unregistered.current_command = unregistered.show_main_menu
-        unregistered.execute()
+        unregistered.command_executor()
 
     elif request == "зарегестрироваться как учитель":
         unregistered.current_command = unregistered.teacher_registration
-        unregistered.execute()
+        unregistered.command_executor()
 
     elif request == "зарегестрироваться как ученик":
         unregistered.current_command = unregistered.student_registration
-        unregistered.execute()
+        unregistered.command_executor()
     
     elif unregistered.current_registration and not unregistered.current_registration.registration_finished:
         unregistered.handle_registration_input()

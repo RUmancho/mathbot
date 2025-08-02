@@ -48,7 +48,7 @@ class Process:
 
         if self._cancelable:
             if self._current_request == self.CANCEL_KEYWORD:
-                self.stop
+                self.stop()
 
     def stop(self):
         self._i = 0
@@ -57,8 +57,10 @@ class Process:
     def execute(self):
         try:
             self._chain[self._i]()
-            if self._i <= self._max_i:
+            if self._i < self._max_i:
                 self._i += 1 
+            else:
+                self.stop()
         except UserInputError as e:
             print(f"Пользователь {self._me.name} неверно ввёл запрошенные данные")
 

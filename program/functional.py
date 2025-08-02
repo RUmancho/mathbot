@@ -33,6 +33,9 @@ class User:
     def find_my_role(ID) -> str:
         search = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == ID, "role")
         return search
+    
+    def command_executor(self):
+        self.current_command()
 
 
 class Registered(User):
@@ -64,7 +67,13 @@ class Registered(User):
     def __init__(self, ID: str = "", telegramBot = None):
         super().__init__(ID, telegramBot)
 
-        delete_profile_process = self.DeleteProfile(ID)
+        self.delete_profile_process = self.DeleteProfile(ID)
+
+    def delete_account(self):
+        self.current_command = self.delete_profile_process.execute
+
+    
+
 
 class Teacher(Registered):
     def __init__(self, myID: str = "", telegramBot = None):
@@ -429,7 +438,7 @@ class Unregistered(User):
                 print(f"Ошибка при обработке ввода регистрации: {e}")
                 self.text_out("Произошла ошибка при обработке ввода")
 
-    def execute(self):
+    def command_executor(self):
         """Универсальный метод для выполнения текущей команды"""
         print(f"Execute вызван с current_command: {self.current_command}")
         if self.current_command:

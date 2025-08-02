@@ -4,6 +4,34 @@ import telebot
 import config
 colorama.init()
 
+class Process:
+    def __init__(self):
+        self.is_active = False
+        self.chain = []
+        self.i = 0
+        self.max_i = len(self.chain) - 1
+
+    def stop(self):
+        self.i = 0
+        self.is_active = False
+
+    def run(self):
+        result = self.chain[self.i]()
+        if result:
+            if self.i <= self.max_i:
+                self.i += 1 
+            else:
+                self.i = 0
+
+class RegistrationTeacher(Process):
+    def __init__(self):
+        self.chain = [self.start]
+
+    def start(self):
+        ...
+
+        
+
 class ResourceChain:
     IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp"]
     DOCUMENT_EXTENSIONS = ["doc", "docx", "pdf", "xlsx", "xls", "ppt", "pptx", "txt"]

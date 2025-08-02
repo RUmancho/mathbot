@@ -15,12 +15,6 @@ class User:
         self.current_request = None
         self.current_command = None
 
-    def undo_support(self, function: callable):
-        def wrapper(*args, **kwargs):
-            if self.current_request == "отмена":
-                function(*args, **kwargs)
-        return wrapper
-
     def unsupported_command_warning(self):
         self.text_out("Неизвестная команда")
 

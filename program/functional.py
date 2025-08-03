@@ -73,7 +73,7 @@ class Teacher(Registered):
     def __init__(self, myID: str = "", telegramBot = None):
         super().__init__(myID, telegramBot)
         self.searchClass = []
-        self.ref = f"tg://user?id={self.ID}"
+        self._ref = f"tg://user?id={self.ID}"
         self.llm = LLM()  # Инициализация LLM для учителя
 
         self.searchClass = Button(btn.Teacher.search_class().data_input, self.__search_class)

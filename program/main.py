@@ -15,23 +15,24 @@ def main(msg):
     request = core.transform_request(msg.text)
     ID = str(msg.chat.id)
     user.set_ID(ID)
-    user.update_last_request(request)
-    
-    if ID in functional.User.registered_users_IDS():
-        role = functional.User.find_my_role(ID)
-        print(f"Пользователь зарегистрирован, роль: {role}")
 
-        if role == "ученик":
-            user.set_user_type(functional.Student)
+    print(dir(user))
+    if user.info.role is not None:
+        print(f"Пользователь зарегистрирован, роль: {user.info.role}")
+
+        if user.info.role == "ученик":
+            user.set_type(functional.Student)
             handle_student_commands(request)
 
-        elif role == "учитель":
-            user.set_user_type(functional.Teacher)
+        elif user.info.role == "учитель":
+            user.set_type(functional.Teacher)
             handle_teacher_commands(request)
     else:
-        user.set_user_type(functional.Unregistered)
+        user.set_type(functional.Unregistered)
         print(f"Пользователь НЕ зарегистрирован, обрабатываем как незарегистрированный")
         handle_unregistered_commands(request)
+
+    user.update_last_request(request)
 
 def handle_student_commands(request: str, user: functional.Student):
     is_response = theory.handler(request, user.text_out, user.get_ID())

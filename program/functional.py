@@ -26,11 +26,6 @@ class User:
     def update_last_request(self, request):
         self._current_request = request
 
-    @staticmethod
-    def registered_users_IDS() -> list:
-        search = Manager.get_column(Tables.Users.telegram_id)
-        return search
-    
     def command_executor(self):
         self._current_command()
 
@@ -465,9 +460,30 @@ class Unregistered(User):
 class NewUser():
     def __init__(self, bind_bot):
         self.bot = bind_bot
+        self.is_switch = False
 
     def set_ID(self, ID):
+        print("вызов set_ID")
         self._ID = ID
+        self._switch(User)
+        self.is_switch = False
 
-    def set_user_type(self, new: Teacher | Student | Unregistered):
-        self.__dict__ = new(self._ID, self.bot).__dict__
+    def set_type(self, new_type: Teacher | Student | Unregistered):
+        print("вызов set_user_type")
+        self._switch(new_type)
+
+    def _switch(self, new_type):
+        print("вызов switch")
+
+        if not self.is_switch:
+            self.is_switch = True
+            new = new_type(self._ID, self.bot)
+
+            for name in dir(new):
+                attr = getattr(new, name)
+                if callable(attr):
+                    # Привязываем метод к текущему экземпляру
+                    bound_method = attr.__get__(self, self.__class__)
+                    setattr(self, name, bound_method)
+                else:
+                    setattr(self, name, attr)

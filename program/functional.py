@@ -5,17 +5,24 @@ import keyboards
 import core
 from LLM import LLM
 
+def find_my_role(ID):
+    return Manager.get_cell(Tables.Users, Tables.Users.telegram_id == ID, "telegram_id")
 
 class User:
     RUN_BOT_COMMADS = ["/start"]
     SHOW_MAIN_MENU = ["главная", "меню", "/меню", "/главная"]
 
-    def __init__(self, ID, telegramBot = None):
+    def __init__(self, ID, bind_bot = None):
         self.info = core.UserRecognizer(ID)
         self._ID = ID
-        self._telegramBot = telegramBot
+        self._telegramBot = bind_bot
         self._current_request = None
         self._current_command = None
+
+    def set_ID(self, ID):
+        if type(ID) != str:
+            raise TypeError("ID is not str")
+        self._ID = ID
 
     def unsupported_command_warning(self):
         self.text_out("Неизвестная команда")
@@ -28,6 +35,7 @@ class User:
 
     def command_executor(self):
         self._current_command()
+
 
 
 class Registered(User):
@@ -70,8 +78,8 @@ class Registered(User):
 
 
 class Teacher(Registered):
-    def __init__(self, myID: str = "", telegramBot = None):
-        super().__init__(myID, telegramBot)
+    def __init__(self, myID: str = "", bind_bot = None):
+        super().__init__(myID, bind_bot)
         self.searchClass = []
         self._ref = f"tg://user?id={self.ID}"
         self.llm = LLM()  # Инициализация LLM для учителя
@@ -224,8 +232,8 @@ class Teacher(Registered):
 
 
 class Student(Registered):
-    def __init__(self, myID: str = "", telegramBot = None):
-        super().__init__(myID, telegramBot)
+    def __init__(self, myID: str = "", bind_bot = None):
+        super().__init__(myID, bind_bot)
         self.llm = LLM()  # Инициализация LLM для студента
 
     def show_main_menu(self):
@@ -456,34 +464,3 @@ class Unregistered(User):
         self.text_out("главное меню", keyboards.Guest.main)
         return True
 
-
-class NewUser():
-    def __init__(self, bind_bot):
-        self.bot = bind_bot
-        self.is_switch = False
-
-    def set_ID(self, ID):
-        print("вызов set_ID")
-        self._ID = ID
-        self._switch(User)
-        self.is_switch = False
-
-    def set_type(self, new_type: Teacher | Student | Unregistered):
-        print("вызов set_user_type")
-        self._switch(new_type)
-
-    def _switch(self, new_type):
-        print("вызов switch")
-
-        if not self.is_switch:
-            self.is_switch = True
-            new = new_type(self._ID, self.bot)
-
-            for name in dir(new):
-                attr = getattr(new, name)
-                if callable(attr):
-                    # Привязываем метод к текущему экземпляру
-                    bound_method = attr.__get__(self, self.__class__)
-                    setattr(self, name, bound_method)
-                else:
-                    setattr(self, name, attr)

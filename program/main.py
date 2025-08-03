@@ -7,33 +7,36 @@ import core
 bot = telebot.TeleBot(config.BOT_TOKEN)
 core.ButtonCollector.set_bot(bot)
 
-user = functional.NewUser(bot)
+teacher = functional.Teacher(bind_bot = bot)
+student = functional.Student(bind_bot = bot)
+unregistered = functional.Unregistered(bind_bot = bot)
+
 
 @bot.message_handler()
 def main(msg):
-    global user
     request = core.transform_request(msg.text)
     ID = str(msg.chat.id)
-    user.set_ID(ID)
+    teacher.set_ID(ID)
+    student.set_ID(ID)
+    unregistered.set_ID(ID)
 
-    print(dir(user))
-    if user.info.role is not None:
-        print(f"Пользователь зарегистрирован, роль: {user.info.role}")
+    role = functional.find_my_role(ID)
+    if role:
+        print(f"Пользователь зарегистрирован, роль: {role}")
 
-        if user.info.role == "ученик":
-            user.set_type(functional.Student)
-            handle_student_commands(request)
+        if role == "ученик":
+            student.update_last_request(request)
+            handle_student_commands(request, student)
 
-        elif user.info.role == "учитель":
-            user.set_type(functional.Teacher)
-            handle_teacher_commands(request)
+        elif role == "учитель":
+            teacher.update_last_request(request)
+            handle_teacher_commands(request, teacher)
     else:
-        user.set_type(functional.Unregistered)
+        unregistered.update_last_request(request)
         print(f"Пользователь НЕ зарегистрирован, обрабатываем как незарегистрированный")
-        handle_unregistered_commands(request)
+        handle_unregistered_commands(request, unregistered)
 
-    user.update_last_request(request)
-
+    
 def handle_student_commands(request: str, user: functional.Student):
     is_response = theory.handler(request, user.text_out, user.get_ID())
     

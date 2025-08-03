@@ -69,6 +69,5 @@
             "geometry_guide": "src/math/geometry/DOC-20240605-WA0000.pdf"
         }
     },
-    "database": "src/users.db",
-    "bad_words": "src/bad_words.txt"
+    "database": "src/users.db"
 }

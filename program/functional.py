@@ -19,6 +19,9 @@ class User:
         self._current_request = None
         self._current_command = None
 
+    def get_ID(self) -> str:
+        return self._ID
+
     def set_ID(self, ID):
         if type(ID) != str:
             raise TypeError("ID is not str")
@@ -34,7 +37,8 @@ class User:
         self._current_request = request
 
     def command_executor(self):
-        self._current_command()
+        if callable(self._current_command):
+            self._current_command()
 
 
 

@@ -6,7 +6,7 @@ import core
 from LLM import LLM
 
 def find_my_role(ID):
-    return Manager.get_cell(Tables.Users, Tables.Users.telegram_id == ID, "telegram_id")
+    return Manager.get_cell(Tables.Users, Tables.Users.telegram_id == ID, "role")
 
 class User:
     RUN_BOT_COMMADS = ["/start"]
@@ -81,7 +81,7 @@ class Teacher(Registered):
     def __init__(self, myID: str = "", bind_bot = None):
         super().__init__(myID, bind_bot)
         self.searchClass = []
-        self._ref = f"tg://user?id={self.ID}"
+        self._ref = f"tg://user?id={self._ID}"
         self.llm = LLM()  # Инициализация LLM для учителя
 
         self.searchClass = Button(btn.Teacher.search_class().data_input, self.__search_class)
@@ -93,7 +93,7 @@ class Teacher(Registered):
     def search_class(self):
         """Начинает поиск класса"""
         self.searchClass = btn.Teacher.search_class()
-        self.searchClass.set_ID(self.ID)
+        self.searchClass.set_ID(self._ID)
         self.searchClass.run()
         return True
 
@@ -116,26 +116,26 @@ class Teacher(Registered):
                 out += f"{name} {surname}\n"
                 studentIDS.append(ID)
 
-            self._telegramBot.send_message(self.ID, out, reply_markup=keyboards.Teacher.attached)
+            self._telegramBot.send_message(self._ID, out, reply_markup=keyboards.Teacher.attached)
             self.searchClass = studentIDS
             return studentIDS
         else:
-            self._telegramBot.send_message(self.ID, text="ничего не найдено")
+            self._telegramBot.send_message(self._ID, text="ничего не найдено")
 
     @core.log
     def send_application(self):
         """отправтить заявку на прикрепление найденным ученикам"""
         for ID in self.searchClass:
-            oldApplication = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == {self.ID},"application")
+            oldApplication = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == {self._ID},"application")
 
             if oldApplication:
-                newApplication = f"{oldApplication}{self.ID};"
+                newApplication = f"{oldApplication}{self._ID};"
             else:
-                newApplication = f"{self.ID};"
+                newApplication = f"{self._ID};"
             Manager.update_record(Tables.Users, "telegram_id", ID, "application", newApplication)
             self._telegramBot.send_message(ID, f"учитель {self.name} {self.name} хочет прикрепить вас к себе. Для подтверждения перейдите в заявки")
 
-        self._telegramBot.send_message(self.ID, "Заявка отправлена", reply_markup = keyboards.Teacher.main)
+        self._telegramBot.send_message(self._ID, "Заявка отправлена", reply_markup = keyboards.Teacher.main)
         return True
 
     @core.log
@@ -143,7 +143,7 @@ class Teacher(Registered):
         """Показывает список прикрепленных учеников""" 
         attached_students = self._reader_my_data("attached_students")
         if not attached_students:
-            self._telegramBot.send_message(self.ID, "У вас пока нет прикрепленных учеников", reply_markup=keyboards.Teacher.main)
+            self._telegramBot.send_message(self._ID, "У вас пока нет прикрепленных учеников", reply_markup=keyboards.Teacher.main)
             return
         
         student_ids = attached_students.split(";")[:-1]
@@ -157,19 +157,19 @@ class Teacher(Registered):
             
             out += f"• {name} {surname} (школа №{school}, {student_class} класс)\n"
         
-        self._telegramBot.send_message(self.ID, out, reply_markup=keyboards.Teacher.main)
+        self._telegramBot.send_message(self._ID, out, reply_markup=keyboards.Teacher.main)
         return True
 
     def show_profile_actions(self):
-        self._telegramBot.send_message(self.ID, "Выберите действие", reply_markup = keyboards.Teacher.profile)
+        self._telegramBot.send_message(self._ID, "Выберите действие", reply_markup = keyboards.Teacher.profile)
 
     def show_main_menu(self):
-        self._telegramBot.send_message(self.ID, "главная", reply_markup = keyboards.Teacher.main)
+        self._telegramBot.send_message(self._ID, "главная", reply_markup = keyboards.Teacher.main)
 
     def assign_homework(self):
         """Показывает меню для задания домашнего задания"""
         try:
-            self._telegramBot.send_message(self.ID, "Выберите тип задания", reply_markup=keyboards.Teacher.homework)
+            self._telegramBot.send_message(self._ID, "Выберите тип задания", reply_markup=keyboards.Teacher.homework)
             return True
         except Exception as e:
             print(f"Ошибка при показе меню заданий: {e}")
@@ -180,7 +180,7 @@ class Teacher(Registered):
         """Начинает процесс задания индивидуального задания"""
         try:
             # Здесь можно добавить логику для создания индивидуального задания
-            self._telegramBot.send_message(self.ID, "Функция индивидуальных заданий в разработке", reply_markup=keyboards.Teacher.main)
+            self._telegramBot.send_message(self._ID, "Функция индивидуальных заданий в разработке", reply_markup=keyboards.Teacher.main)
             return True
         except Exception as e:
             print(f"Ошибка при создании индивидуального задания: {e}")
@@ -191,7 +191,7 @@ class Teacher(Registered):
         """Начинает процесс задания задания для класса"""
         try:
             # Здесь можно добавить логику для создания задания для класса
-            self._telegramBot.send_message(self.ID, "Функция заданий для класса в разработке", reply_markup=keyboards.Teacher.main)
+            self._telegramBot.send_message(self._ID, "Функция заданий для класса в разработке", reply_markup=keyboards.Teacher.main)
             return True
         except Exception as e:
             print(f"Ошибка при создании задания для класса: {e}")
@@ -201,7 +201,7 @@ class Teacher(Registered):
     def check_tasks(self):
         """Показывает меню для проверки заданий"""
         try:
-            self._telegramBot.send_message(self.ID, "Выберите тип заданий для проверки", reply_markup=keyboards.Teacher.check_task)
+            self._telegramBot.send_message(self._ID, "Выберите тип заданий для проверки", reply_markup=keyboards.Teacher.check_task)
             return True
         except Exception as e:
             print(f"Ошибка при показе меню проверки: {e}")
@@ -212,7 +212,7 @@ class Teacher(Registered):
         """Показывает индивидуальные задания для проверки"""
         try:
             # Здесь можно добавить логику для показа индивидуальных заданий
-            self._telegramBot.send_message(self.ID, "Функция проверки индивидуальных заданий в разработке", reply_markup=keyboards.Teacher.main)
+            self._telegramBot.send_message(self._ID, "Функция проверки индивидуальных заданий в разработке", reply_markup=keyboards.Teacher.main)
             return True
         except Exception as e:
             print(f"Ошибка при проверке индивидуальных заданий: {e}")
@@ -223,7 +223,7 @@ class Teacher(Registered):
         """Показывает задания класса для проверки"""
         try:
             # Здесь можно добавить логику для показа заданий класса
-            self._telegramBot.send_message(self.ID, "Функция проверки заданий класса в разработке", reply_markup=keyboards.Teacher.main)
+            self._telegramBot.send_message(self._ID, "Функция проверки заданий класса в разработке", reply_markup=keyboards.Teacher.main)
             return True
         except Exception as e:
             print(f"Ошибка при проверке заданий класса: {e}")
@@ -247,48 +247,48 @@ class Student(Registered):
         self.class_ = self._reader_my_data("student_class")
 
     def __cancel_application(self, teacherID):
-        data_filter = lambda column: Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self.ID, column)  
+        data_filter = lambda column: Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, column)  
         old = data_filter("application")
         new = old.replace(f"{teacherID};", "")
-        Manager.update_record(Tables.Users, "telegram_id", self.ID, "application", new)
+        Manager.update_record(Tables.Users, "telegram_id", self._ID, "application", new)
 
         notification = f"{self.name} {self.surname} из школы №{self.school} класса {self.class_} отклонил заявку"
         self._telegramBot.send_message(teacherID, notification)
-        self._telegramBot.send_message(self.ID, "Заявка отклонена", reply_markup=keyboards.Student.main)
+        self._telegramBot.send_message(self._ID, "Заявка отклонена", reply_markup=keyboards.Student.main)
         return True
 
     def __accept_application(self, teacherID):
-        data_filter = lambda column:  Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self.ID, column)  
+        data_filter = lambda column:  Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, column)  
         old = data_filter("application")
         new = old.replace(f"{teacherID};", "")
-        Manager.update_record(Tables.Users, "telegram_id", self.ID, "application", new)
+        Manager.update_record(Tables.Users, "telegram_id", self._ID, "application", new)
 
         old = data_filter("my_teachers")
         if old == None:
             new = f"{teacherID};"
         else:
             new = f"{old}{teacherID};"
-        Manager.update_record(Tables.Users, "telegram_id", self.ID, "my_teachers", new)
+        Manager.update_record(Tables.Users, "telegram_id", self._ID, "my_teachers", new)
 
         old = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == teacherID, "attached_students") 
         if old == None:
-            new = f"{self.ID};"
+            new = f"{self._ID};"
         else:
-            new = f"{old}{self.ID};"
+            new = f"{old}{self._ID};"
         Manager.update_record(Tables.Users, "telegram_id", teacherID, "attached_students", new)
 
         notification = f"{self.name} {self.surname} из школы №{self.school} класса {self.class_} принял заявку"
         self._telegramBot.send_message(teacherID, notification)
-        self._telegramBot.send_message(self.ID, "Заявка принята", reply_markup=keyboards.Student.main) 
+        self._telegramBot.send_message(self._ID, "Заявка принята", reply_markup=keyboards.Student.main) 
         return True
 
     def show_applications(self):
         buttons = []
         subButton = []
 
-        teachersIDS = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self.ID, "application")
+        teachersIDS = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, "application")
         if not teachersIDS:
-            self._telegramBot.send_message(self.ID, "Заявок нет", reply_markup=keyboards.Student.main)
+            self._telegramBot.send_message(self._ID, "Заявок нет", reply_markup=keyboards.Student.main)
             return
         
         teachersIDS = teachersIDS.split(";")[:-1]
@@ -300,32 +300,32 @@ class Student(Registered):
             surname = data_filter("surname")
             ref = data_filter("ref")
 
-            general = [self.ID, self.name, self.surname, self.school, self.class_, ID, self._telegramBot]
+            general = [self._ID, self.name, self.surname, self.school, self.class_, ID, self._telegramBot]
             cancel = lambda: Student.__cancel_application(*general)
             accept = lambda: Student.__accept_application(*general)
             subButton.append(Button("отклонить заявку", cancel))
             subButton.append(Button("принять заявку", accept))
 
-            buttons.append(Button(f"{name} {surname}, {ref}", lambda: self._telegramBot.send_message(self.ID, "Выберите действие", reply_markup=keyboards.Student.application)))
+            buttons.append(Button(f"{name} {surname}, {ref}", lambda: self._telegramBot.send_message(self._ID, "Выберите действие", reply_markup=keyboards.Student.application)))
 
             name_surname_ref_teacher.append([f"{name} {surname}, {ref}"])
 
         keyboard = keyboards.create_keyboard(*name_surname_ref_teacher)
-        self._telegramBot.send_message(self.ID, "Выберите учителя", reply_markup = keyboard)
+        self._telegramBot.send_message(self._ID, "Выберите учителя", reply_markup = keyboard)
         return True
 
     def show_profile_actions(self):
-        self._telegramBot.send_message(self.ID, "Выберите действие", reply_markup = keyboards.Student.profile)
+        self._telegramBot.send_message(self._ID, "Выберите действие", reply_markup = keyboards.Student.profile)
 
     def show_main_menu(self):
-        self._telegramBot.send_message(self.ID, "главная", reply_markup = keyboards.Student.main)
+        self._telegramBot.send_message(self._ID, "главная", reply_markup = keyboards.Student.main)
 
     def show_my_teachers(self):
         """Показывает список прикрепленных учителей"""
         try:
             my_teachers = self._reader_my_data("my_teachers")
             if not my_teachers:
-                self._telegramBot.send_message(self.ID, "У вас пока нет прикрепленных учителей", reply_markup=keyboards.Student.main)
+                self._telegramBot.send_message(self._ID, "У вас пока нет прикрепленных учителей", reply_markup=keyboards.Student.main)
                 return
             
             teacher_ids = my_teachers.split(";")[:-1]
@@ -337,17 +337,17 @@ class Student(Registered):
                 
                 out += f"• {name} {surname}\n"
             
-            self._telegramBot.send_message(self.ID, out, reply_markup=keyboards.Student.main)
+            self._telegramBot.send_message(self._ID, out, reply_markup=keyboards.Student.main)
             return True
         except Exception as e:
             print(f"Ошибка при показе учителей: {e}")
-            self._telegramBot.send_message(self.ID, "Произошла ошибка при получении списка учителей", reply_markup=keyboards.Student.main)
+            self._telegramBot.send_message(self._ID, "Произошла ошибка при получении списка учителей", reply_markup=keyboards.Student.main)
             return False
 
     def show_tasks(self):
         """Показывает меню для работы с заданиями"""
         try:
-            self._telegramBot.send_message(self.ID, "Выберите действие с заданиями", reply_markup=keyboards.Student.task)
+            self._telegramBot.send_message(self._ID, "Выберите действие с заданиями", reply_markup=keyboards.Student.task)
             return True
         except Exception as e:
             print(f"Ошибка при показе меню заданий: {e}")
@@ -358,7 +358,7 @@ class Student(Registered):
         """Получает доступные задания"""
         try:
             # Здесь можно добавить логику для получения заданий
-            self._telegramBot.send_message(self.ID, "Функция получения заданий в разработке", reply_markup=keyboards.Student.main)
+            self._telegramBot.send_message(self._ID, "Функция получения заданий в разработке", reply_markup=keyboards.Student.main)
             return True
         except Exception as e:
             print(f"Ошибка при получении заданий: {e}")
@@ -369,7 +369,7 @@ class Student(Registered):
         """Начинает процесс отправки решения"""
         try:
             # Здесь можно добавить логику для отправки решения
-            self._telegramBot.send_message(self.ID, "Функция отправки решений в разработке", reply_markup=keyboards.Student.main)
+            self._telegramBot.send_message(self._ID, "Функция отправки решений в разработке", reply_markup=keyboards.Student.main)
             return True
         except Exception as e:
             print(f"Ошибка при отправке решения: {e}")
@@ -385,19 +385,19 @@ class Unregistered(User):
         self.current_registration = None
 
     def __registration(self, enterData, role):
-        user_record = Tables.Users(**enterData, telegram_id=self.ID, role=role)
+        user_record = Tables.Users(**enterData, telegram_id=self._ID, role=role)
         Manager.write(user_record)
 
     def teacher_registration(self):
         """Начинает регистрацию учителя"""
         self.current_registration = btn.Unreg.teacher_registration()
-        self.current_registration.set_ID(self.ID)
+        self.current_registration.set_ID(self._ID)
         self.current_registration.run()
 
     def student_registration(self):
         """Начинает регистрацию ученика"""
         self.current_registration = btn.Unreg.student_registration()
-        self.current_registration.set_ID(self.ID)
+        self.current_registration.set_ID(self._ID)
         self.current_registration.run()
         return True
 

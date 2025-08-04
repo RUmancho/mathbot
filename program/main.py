@@ -1,4 +1,4 @@
-import functional
+import roles
 import telebot
 import config
 import theory
@@ -7,37 +7,38 @@ import core
 bot = telebot.TeleBot(config.BOT_TOKEN)
 core.ButtonCollector.set_bot(bot)
 
-teacher = functional.Teacher(bind_bot = bot)
-student = functional.Student(bind_bot = bot)
-unregistered = functional.Unregistered(bind_bot = bot)
+new_user = None
 
+is_set = False
+def set_role(user_type, ID):
+    global roles
+    if not is_set:
+        roles = user_type(ID, bot)
+        is_set = True
 
 @bot.message_handler()
 def main(msg):
     request = core.transform_request(msg.text)
     ID = str(msg.chat.id)
-    teacher.set_ID(ID)
-    student.set_ID(ID)
-    unregistered.set_ID(ID)
 
-    role = functional.find_my_role(ID)
+    role = role.find_my_role(ID)
     if role:
         print(f"Пользователь зарегистрирован, роль: {role}")
 
         if role == "ученик":
-            student.update_last_request(request)
-            handle_student_commands(request, student)
+            set_role(roles.Student, ID)
+            handle_student_commands(request, new_user)
 
         elif role == "учитель":
-            teacher.update_last_request(request)
-            handle_teacher_commands(request, teacher)
+            set_role(roles.Teacher, ID)
+            handle_teacher_commands(request, new_user)
     else:
-        unregistered.update_last_request(request)
+        set_role(roles.Unregistered, ID)
         print(f"Пользователь НЕ зарегистрирован, обрабатываем как незарегистрированный")
-        handle_unregistered_commands(request, unregistered)
+        handle_unregistered_commands(request, new_user)
 
     
-def handle_student_commands(request: str, user: functional.Student):
+def handle_student_commands(request: str, user):
     is_response = theory.handler(request, user.text_out, user.get_ID())
     
     if is_response: ...
@@ -59,7 +60,7 @@ def handle_student_commands(request: str, user: functional.Student):
     else:
         user.unsupported_command_warning()
 
-def handle_teacher_commands(request: str, user: functional.Teacher):
+def handle_teacher_commands(request: str, user):
     print(f"Обработка команды учителя: '{request}'")
     is_response = theory.handler(request, user.text_out, user.get_ID())
     
@@ -91,7 +92,7 @@ def handle_teacher_commands(request: str, user: functional.Teacher):
     
     user.command_executor()
 
-def handle_unregistered_commands(request: str, user: functional.Unregistered):
+def handle_unregistered_commands(request: str, user):
     is_response = theory.handler(request, user.text_out, user.get_ID())
     
     if is_response: ...

@@ -42,6 +42,3 @@ class Teacher:
             "поиск...",
             keyboards.Teacher.main,
         )
-
-class Student:
-    ...

@@ -74,7 +74,7 @@ class Registered(User):
         self.delete_profile_process = self.DeleteProfile(ID)
 
     def delete_account(self):
-        self.current_command = self.delete_profile_process.execute
+        self._current_command = self.delete_profile_process.execute
 
 
  
@@ -461,10 +461,12 @@ class Unregistered(User):
             print("current_command не установлен, ничего не выполняем")
             
     def getting_started(self):
+        """Вызывается при первом входе в бота"""
         self.text_out(self.START_MESSAGE, keyboards.Guest.main)
         return True
     
     def show_main_menu(self):
+        """Вызывается при входе в главное меню"""
         self.text_out("главное меню", keyboards.Guest.main)
         return True
 

@@ -1,4 +1,4 @@
-import roles
+import user
 import telebot
 import config
 import theory
@@ -11,9 +11,9 @@ new_user = None
 
 is_set = False
 def set_role(user_type, ID):
-    global roles
+    global new_user, is_set
     if not is_set:
-        roles = user_type(ID, bot)
+        new_user = user_type(ID, bot)
         is_set = True
 
 @bot.message_handler()
@@ -21,24 +21,27 @@ def main(msg):
     request = core.transform_request(msg.text)
     ID = str(msg.chat.id)
 
-    role = role.find_my_role(ID)
+    role = user.find_my_role(ID)
     if role:
         print(f"Пользователь зарегистрирован, роль: {role}")
 
         if role == "ученик":
-            set_role(roles.Student, ID)
+            set_role(user.Student, ID)
             handle_student_commands(request, new_user)
 
         elif role == "учитель":
-            set_role(roles.Teacher, ID)
+            set_role(user.Teacher, ID)
             handle_teacher_commands(request, new_user)
     else:
-        set_role(roles.Unregistered, ID)
+        set_role(user.Unregistered, ID)
         print(f"Пользователь НЕ зарегистрирован, обрабатываем как незарегистрированный")
         handle_unregistered_commands(request, new_user)
 
+    new_user.update_last_request(request)
+    new_user.command_executor()
+
     
-def handle_student_commands(request: str, user):
+def handle_student_commands(request: str, user: user.Student):
     is_response = theory.handler(request, user.text_out, user.get_ID())
     
     if is_response: ...
@@ -59,8 +62,9 @@ def handle_student_commands(request: str, user):
         user.submit_solution()
     else:
         user.unsupported_command_warning()
+    
 
-def handle_teacher_commands(request: str, user):
+def handle_teacher_commands(request: str, user: user.Teacher):
     print(f"Обработка команды учителя: '{request}'")
     is_response = theory.handler(request, user.text_out, user.get_ID())
     
@@ -90,28 +94,23 @@ def handle_teacher_commands(request: str, user):
     else:
         user.unsupported_command_warning()
     
-    user.command_executor()
 
-def handle_unregistered_commands(request: str, user):
+def handle_unregistered_commands(request: str, user: user.Unregistered):
     is_response = theory.handler(request, user.text_out, user.get_ID())
     
     if is_response: ...
 
     elif request in user.RUN_BOT_COMMADS:
         user.current_command = user.getting_started
-        user.command_executor()
 
     elif request in user.SHOW_MAIN_MENU:
         user.current_command = user.show_main_menu
-        user.command_executor()
 
     elif request == "зарегестрироваться как учитель":
         user.current_command = user.teacher_registration
-        user.command_executor()
 
     elif request == "зарегестрироваться как ученик":
         user.current_command = user.student_registration
-        user.command_executor()
     
     elif user.current_registration and not user.current_registration.registration_finished:
         user.handle_registration_input()

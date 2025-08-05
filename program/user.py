@@ -470,3 +470,38 @@ class Unregistered(User):
         self.text_out("главное меню", keyboards.Guest.main)
         return True
 
+
+class NewUser:
+    def __init__(self, ID, bind_bot = None):
+        self.user = None
+        self.ID = ID
+        self.bind_bot = bind_bot
+        self._role_changed = False  # Флаг для отслеживания смены роли
+
+    def set_user(self, user):
+        """Устанавливает пользователя, если роль еще не была изменена"""
+        if not self._role_changed:
+            self.user = user
+            self._role_changed = True
+            print(f"Роль пользователя {self.ID} установлена: {type(user).__name__}")
+        else:
+            print(f"Роль пользователя {self.ID} уже была установлена ранее")
+
+    def get_user(self):
+        """Возвращает текущего пользователя"""
+        return self.user
+
+    def update_last_request(self, request):
+        """Обновляет последний запрос пользователя"""
+        if self.user:
+            self.user.update_last_request(request)
+
+    def command_executor(self):
+        """Выполняет команду пользователя"""
+        if self.user:
+            self.user.command_executor()
+
+    def reset_role_change_flag(self):
+        """Сбрасывает флаг смены роли (для тестирования или перезагрузки)"""
+        self._role_changed = False
+        self.user = None 

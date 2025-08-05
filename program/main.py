@@ -7,19 +7,26 @@ import core
 bot = telebot.TeleBot(config.BOT_TOKEN)
 core.ButtonCollector.set_bot(bot)
 
-new_user = None
+new_user = user.NewUser("", bot)  # Передаем пустую строку как ID, bot как bind_bot
 
-is_set = False
-def set_role(user_type, ID):
-    global new_user, is_set
-    if not is_set:
-        new_user = user_type(ID, bot)
-        is_set = True
+
+def set_role(user_class, ID):
+    """Устанавливает роль пользователя в NewUser"""
+    try:
+        user_instance = user_class(ID, bot)
+        new_user.ID = ID  # Обновляем ID в NewUser
+        new_user.set_user(user_instance)
+    except Exception as e:
+        print(f"Ошибка при установке роли пользователя {ID}: {e}")
+
 
 @bot.message_handler()
 def main(msg):
     request = core.transform_request(msg.text)
     ID = str(msg.chat.id)
+
+    # Сбрасываем флаг смены роли для нового сообщения
+    new_user.reset_role_change_flag()    
 
     role = user.find_my_role(ID)
     if role:
@@ -27,15 +34,15 @@ def main(msg):
 
         if role == "ученик":
             set_role(user.Student, ID)
-            handle_student_commands(request, new_user)
+            handle_student_commands(request, new_user.get_user())
 
         elif role == "учитель":
             set_role(user.Teacher, ID)
-            handle_teacher_commands(request, new_user)
+            handle_teacher_commands(request, new_user.get_user())
     else:
         set_role(user.Unregistered, ID)
         print(f"Пользователь НЕ зарегистрирован, обрабатываем как незарегистрированный")
-        handle_unregistered_commands(request, new_user)
+        handle_unregistered_commands(request, new_user.get_user())
 
     new_user.update_last_request(request)
     new_user.command_executor()

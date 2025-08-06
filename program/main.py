@@ -7,18 +7,7 @@ import core
 bot = telebot.TeleBot(config.BOT_TOKEN)
 core.ButtonCollector.set_bot(bot)
 
-new_user = user.NewUser("", bot)  # Передаем пустую строку как ID, bot как bind_bot
-
-
-def set_role(user_class, ID):
-    """Устанавливает роль пользователя в NewUser"""
-    try:
-        user_instance = user_class(ID, bot)
-        new_user.ID = ID  # Обновляем ID в NewUser
-        new_user.set_user(user_instance)
-    except Exception as e:
-        print(f"Ошибка при установке роли пользователя {ID}: {e}")
-
+new_user = user.User("", bot)
 
 @bot.message_handler()
 def main(msg):
@@ -30,18 +19,15 @@ def main(msg):
 
     role = user.find_my_role(ID)
     if role:
-        print(f"Пользователь зарегистрирован, роль: {role}")
-
         if role == "ученик":
-            set_role(user.Student, ID)
+            new_user.set_role(user.Student, ID)
             handle_student_commands(request, new_user.get_user())
 
         elif role == "учитель":
-            set_role(user.Teacher, ID)
+            new_user.set_role(user.Teacher, ID)
             handle_teacher_commands(request, new_user.get_user())
     else:
-        set_role(user.Unregistered, ID)
-        print(f"Пользователь НЕ зарегистрирован, обрабатываем как незарегистрированный")
+        new_user.set_role(user.Unregistered, ID)
         handle_unregistered_commands(request, new_user.get_user())
 
     new_user.update_last_request(request)
@@ -72,7 +58,6 @@ def handle_student_commands(request: str, user: user.Student):
     
 
 def handle_teacher_commands(request: str, user: user.Teacher):
-    print(f"Обработка команды учителя: '{request}'")
     is_response = theory.handler(request, user.text_out, user.get_ID())
     
     if is_response: ...

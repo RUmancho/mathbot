@@ -10,14 +10,22 @@ def find_my_role(ID):
 
 class User:
     RUN_BOT_COMMADS = ["/start"]
-    SHOW_MAIN_MENU = ["главная", "меню", "/меню", "/главная"]
+    SHOW_MAIN_MENU = ["/меню", "/главная", "/menu", "/main", "/home"]
 
     def __init__(self, ID, bind_bot = None):
-        self.info = core.UserRecognizer(ID)
+        print("создание пользователя")
+        self.info = core.UserRecognizer(ID) 
         self._ID = ID
         self._telegramBot = bind_bot
         self._current_request = None
         self._current_command = None
+
+        self.instance = Unregistered(ID, bind_bot)
+
+
+    def set_role(self, user_class, ID):
+        self.instance = user_class(ID, self._telegramBot)
+
 
     def get_ID(self) -> str:
         return self._ID
@@ -48,15 +56,6 @@ class Registered(User):
             super().__init__(ID, cancelable)
             self._chain = [self.ask_for_password, self.password_entry_verification]
 
-        def _delete_account(self):
-            Manager.delete_record(Tables.Users, "telegram_id", self._me.get_ID())
-
-        def _password_entry_error_message(self):
-            self._bot.send_message(self._me.get_ID(), "Неверный пароль, повторите попытку")
-        
-        def _successful_profile_deletion_message(self):
-            self._bot.send_message(self._me.get_ID(), "Профиль удалён")
-
         def ask_for_password(self):
             self._bot.send_message(self._me.get_ID(), "Введите ваш пароль для удаления профиля")
 
@@ -67,6 +66,16 @@ class Registered(User):
             else:
                 self._password_entry_error_message()
                 raise core.UserInputError("password entry error")
+
+        def _delete_account(self):
+            Manager.delete_record(Tables.Users, "telegram_id", self._me.get_ID())
+
+        def _password_entry_error_message(self):
+            self._bot.send_message(self._me.get_ID(), "Неверный пароль, повторите попытку")
+        
+        def _successful_profile_deletion_message(self):
+            self._bot.send_message(self._me.get_ID(), "Профиль удалён")
+
             
     def __init__(self, ID: str = "", telegramBot = None):
         super().__init__(ID, telegramBot)
@@ -470,38 +479,3 @@ class Unregistered(User):
         self.text_out("главное меню", keyboards.Guest.main)
         return True
 
-
-class NewUser:
-    def __init__(self, ID, bind_bot = None):
-        self.user = None
-        self.ID = ID
-        self.bind_bot = bind_bot
-        self._role_changed = False  # Флаг для отслеживания смены роли
-
-    def set_user(self, user):
-        """Устанавливает пользователя, если роль еще не была изменена"""
-        if not self._role_changed:
-            self.user = user
-            self._role_changed = True
-            print(f"Роль пользователя {self.ID} установлена: {type(user).__name__}")
-        else:
-            print(f"Роль пользователя {self.ID} уже была установлена ранее")
-
-    def get_user(self):
-        """Возвращает текущего пользователя"""
-        return self.user
-
-    def update_last_request(self, request):
-        """Обновляет последний запрос пользователя"""
-        if self.user:
-            self.user.update_last_request(request)
-
-    def command_executor(self):
-        """Выполняет команду пользователя"""
-        if self.user:
-            self.user.command_executor()
-
-    def reset_role_change_flag(self):
-        """Сбрасывает флаг смены роли (для тестирования или перезагрузки)"""
-        self._role_changed = False
-        self.user = None 

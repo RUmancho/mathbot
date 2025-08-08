@@ -418,6 +418,92 @@ class Button:
         except Exception as e:
             print(f"Ошибка при выполнении Button: {e}")
 
+def cancelable(function: callable):
+    """Декоратор, позволяющий отменить текущее действие словом «отмена».
+
+    Поведение:
+    - Если последний ввод пользователя равен ключевому слову отмены
+      (`Process.CANCEL_KEYWORD` → «отмена»), декоратор пытается корректно
+      завершить активный процесс и очищает отложенную команду.
+    - Поддерживаются типовые сценарии:
+        • регистрация (`current_registration`: ButtonCollector),
+        • удаление профиля (`delete_profile_process`: Process),
+        • поиск класса у учителя (`searchClass`: ButtonCollector),
+        • а также очистка `_current_command`.
+    - Пользователю отправляется уведомление «Действие отменено».
+    """
+
+    def wrapper(self, *args, **kwargs):
+        try:
+            last_request = getattr(self, "_current_request", None)
+            cancel_word = getattr(Process, "CANCEL_KEYWORD", "отмена")
+            if isinstance(last_request, str) and last_request == cancel_word:
+                # Пользователь инициировал отмену
+                # Специальный хук отмены, если реализован
+                if hasattr(self, "cancel_current_action") and callable(self.cancel_current_action):
+                    try:
+                        self.cancel_current_action()
+                    except Exception:
+                        pass
+
+                # Попытка отменить типовые процессы
+                # 1) Регистрация через ButtonCollector
+                reg = getattr(self, "current_registration", None)
+                if reg is not None and not getattr(reg, "registration_finished", True):
+                    try:
+                        reg.clear()
+                    except Exception:
+                        pass
+                    try:
+                        setattr(self, "current_registration", None)
+                    except Exception:
+                        pass
+
+                # 2) Удаление профиля (Process)
+                delete_proc = getattr(self, "delete_profile_process", None)
+                if isinstance(delete_proc, Process):
+                    try:
+                        delete_proc.stop()
+                    except Exception:
+                        pass
+
+                # 3) Поиск класса (ButtonCollector)
+                search = getattr(self, "searchClass", None)
+                if search is not None and not getattr(search, "registration_finished", True):
+                    try:
+                        search.clear()
+                    except Exception:
+                        pass
+                    try:
+                        setattr(self, "searchClass", [])
+                    except Exception:
+                        pass
+
+                # Очистка отложенной команды
+                if hasattr(self, "_current_command"):
+                    try:
+                        self._current_command = None
+                    except Exception:
+                        pass
+
+                # Уведомление пользователя
+                try:
+                    bot = getattr(self, "_telegramBot", None)
+                    chat_id = getattr(self, "_ID", None)
+                    if bot and chat_id:
+                        bot.send_message(chat_id, "Действие отменено")
+                except Exception:
+                    pass
+                return True
+
+            # Нет команды отмены — выполняем оригинальную функцию
+            return function(self, *args, **kwargs)
+        except Exception:
+            # В случае ошибки не блокируем дальнейшее выполнение
+            return function(self, *args, **kwargs)
+
+    return wrapper
+
 def log(function: callable):
     def wrapper(*args):
         print(f"{colorama.Fore.GREEN}-------------------------------------------------------------")

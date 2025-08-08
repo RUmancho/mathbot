@@ -7,7 +7,7 @@
 """
 
 from database import Manager, Tables
-from core import Button
+from core import Button, cancelable
 from sqlalchemy import and_
 import buttons as btn
 import keyboards
@@ -169,7 +169,12 @@ class Registered(User):
 
     def delete_account(self):
         """Запускает процесс удаления профиля."""
-        self._current_command = self.delete_profile_process.execute
+        self._current_command = self._cancelable_delete
+
+    @cancelable
+    def _cancelable_delete(self):
+        """Отложенная команда удаления с возможностью отмены."""
+        return self.delete_profile_process.execute()
 
     # helpers for subclasses
     def recognize_user(self):
@@ -203,10 +208,11 @@ class Teacher(Registered):
         self.searchClass.set_ID(self._ID)
         self.searchClass.run()
         # bind executor to process subsequent inputs until completion
-        self._current_command = self._execute_search_class
+        self._current_command = self._cancelable_execute_search_class
         return True
 
-    def _execute_search_class(self):
+    @cancelable
+    def _cancelable_execute_search_class(self):
         """Передаёт ввод пользователя в форму и выполняет поиск после завершения ввода."""
         try:
             if not self.searchClass:
@@ -570,6 +576,14 @@ class Unregistered(User):
         """Обрабатывает ввод пользователя во время регистрации."""
         if self.current_registration and not self.current_registration.registration_finished:
             try:
+                # Обработка отмены напрямую через декоратор не вызывается здесь,
+                # поэтому проверяем ключевое слово и сбрасываем процесс.
+                if isinstance(self._current_request, str) and self._current_request == core.Process.CANCEL_KEYWORD:
+                    self.current_registration.clear()
+                    self.current_registration = None
+                    self.current_command = None
+                    self.text_out("Действие отменено")
+                    return
                 self.current_registration.request(self._current_request)
                 self.current_registration.run()
                 

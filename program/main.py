@@ -1,11 +1,9 @@
 from users import User
 import telebot
 import config
-import core
 from router import route_message
-    
+
 bot = telebot.TeleBot(config.BOT_TOKEN)
-core.ButtonCollector.set_bot(bot)
 
 new_user = User("", bot)
 
@@ -13,6 +11,6 @@ new_user = User("", bot)
 def main(msg):
     route_message(msg, new_user)
 
-    
+
 if __name__ == "__main__":
-    bot.polling(none_stop=True, timeout = 60)
+    bot.polling(none_stop=True, timeout=60)

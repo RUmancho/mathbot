@@ -197,15 +197,18 @@ class Unregistered(User):
 
     @cancelable
     def _cancelable_registration_execute(self):
-        if not self.reg_process:
+        try:
+            if not self.reg_process:
+                return False
+            self.reg_process.update_last_request(self._current_request)
+            self.reg_process.execute()
+            if not getattr(self.reg_process, "_is_active", False):
+                self.reg_process = None
+                self.in_registration = False
+                self._current_command = None
+            return True
+        except Exception:
             return False
-        self.reg_process.update_last_request(self._current_request)
-        self.reg_process.execute()
-        if getattr(self.reg_process, "_is_active", False) is False:
-            self.reg_process = None
-            self.in_registration = False
-            self._current_command = None
-        return True
 
     def getting_started(self):
         self._telegramBot.send_message(self._ID, self.START_MESSAGE, reply_markup=keyboards.Guest.main)

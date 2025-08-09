@@ -112,13 +112,31 @@ class Registered(User):
         self.delete_profile_process = self.DeleteProfile(ID)
 
     def delete_account(self):
-        from core import cancelable
+        """Запускает удаление профиля с поддержкой отмены."""
+        self._current_command = self._cancelable_delete
 
-        @cancelable
-        def _cancelable_delete():
-            return self.delete_profile_process.execute()
+    @staticmethod
+    def _noop(*_, **__):
+        return None
 
-        self._current_command = _cancelable_delete
+    @core.cancelable
+    def _cancelable_delete(self):
+        """Шаг выполнения удаления профиля с корректным завершением процесса."""
+        try:
+            # передаём последний ввод в процесс и выполняем шаг
+            self.delete_profile_process.update_last_request(self._current_request)
+            self.delete_profile_process.execute()
+            # если процесс завершён — очищаем текущую команду, перевыставляем процесс
+            if not getattr(self.delete_profile_process, "_is_active", False):
+                self._current_command = None
+                # готовим новый процесс для следующего вызова в будущем
+                try:
+                    self.delete_profile_process = self.DeleteProfile(self._ID)
+                except Exception:
+                    pass
+            return True
+        except Exception:
+            return False
 
     def recognize_user(self):
         self.name = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, "name")

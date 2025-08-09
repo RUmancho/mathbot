@@ -56,6 +56,8 @@ class Process:
 
     def execute(self):
         try:
+            # помечаем процесс как активный на время выполнения шага
+            self._is_active = True
             self._chain[self._i]()
             if self._i < self._max_i:
                 self._i += 1 
@@ -133,16 +135,7 @@ class FileSender:
             self.bot.send_message(self.chat_id, f"{caption}\n{text}", reply_markup = keyboard)
 
 
-class Sender:
-    def __init__(self, key, out):
-        self.key = key
-        self.out = out
-
-    def __str__(self):
-        return self.out
-    
-    def __repr__(self):
-        return self.out
+## Удалён класс Sender — ввод реализуется через core.Process
 
 
 class Validator:
@@ -206,7 +199,7 @@ class Validator:
 
 
 class Collector:
-    def __init__(self, questionnaire: dict[Sender, callable]):
+    def __init__(self, questionnaire: dict):
         self.questionnaire = questionnaire
         self.last_question = ""
         self.clear()

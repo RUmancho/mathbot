@@ -13,93 +13,93 @@ from users import User as AggregatedUser
 from users import Student, Teacher, Unregistered, find_my_role
 
 
-def handle_student_commands(request: str, u: Student):
+def handle_student_commands(request: str, user: Student):
     """Обработка команд, характерных для роли «Ученик»."""
-    is_response = theory.handler(request, u.text_out, u.get_ID())
+    is_response = theory(request, user.text_out, user.get_ID())
     if is_response:
         return
 
-    if request in u.SHOW_MAIN_MENU:
-        u.show_main_menu()
+    if request in user.SHOW_MAIN_MENU:
+        user.show_main_menu()
     elif request == "профиль":
-        u.show_profile_actions()
+        user.show_profile_actions()
     elif request == "заявки":
-        u.show_applications()
+        user.show_applications()
     elif request == "мои учителя":
-        u.show_my_teachers()
+        user.show_my_teachers()
     elif request == "задания":
-        u.show_tasks()
+        user.show_tasks()
     elif request == "получить задания":
-        u.get_tasks()
+        user.get_tasks()
     elif request == "отправить решение":
-        u.submit_solution()
+        user.submit_solution()
     else:
-        u.unsupported_command_warning()
+        # Если идет многошаговый процесс, не показываем предупреждение
+        if getattr(user, "_current_command", None):
+            return
+        user.unsupported_command_warning()
 
 
-def handle_teacher_commands(request: str, u: Teacher):
+def handle_teacher_commands(request: str, user: Teacher):
     """Обработка команд, характерных для роли «Учитель»."""
-    is_response = theory.handler(request, u.text_out, u.get_ID())
+    is_response = theory(request, user.text_out, user.get_ID())
     if is_response:
         return
 
-    if request in u.SHOW_MAIN_MENU:
-        u.show_main_menu()
+    if request in user.SHOW_MAIN_MENU:
+        user.show_main_menu()
     elif request == "профиль":
-        u.show_profile_actions()
+        user.show_profile_actions()
     elif request == "прикрепить класс":
-        u.search_class()
+        user.search_class()
     elif request == "ваши учащиеся":
-        u.show_my_students()
+        user.show_my_students()
     elif request == "отправить задание":
-        u.assign_homework()
+        user.assign_homework()
     elif request == "проверить задания":
-        u.check_tasks()
+        user.check_tasks()
     elif request == "отправить индивидуальное задание":
-        u.assign_individual_task()
+        user.assign_individual_task()
     elif request == "отправить задание классу":
-        u.assign_class_task()
+        user.assign_class_task()
     elif request == "проверить индивидуальные задания":
-        u.check_individual_tasks()
+        user.check_individual_tasks()
     elif request == "задания для класса":
-        u.check_class_tasks()
+        user.check_class_tasks()
     elif request == "удалить профиль":
-        u.delete_account()
+        user.delete_account()
     else:
-        u.unsupported_command_warning()
+        if getattr(user, "_current_command", None):
+            return
+        user.unsupported_command_warning()
 
 
-def handle_unregistered_commands(request: str, u: Unregistered):
+def handle_unregistered_commands(request: str, user: Unregistered):
     """Обработка команд для незарегистрированного пользователя (гостя)."""
-    is_response = theory.handler(request, u.text_out, u.get_ID())
+    is_response = theory(request, user.text_out, user.get_ID())
     if is_response:
         return
 
-    if request in u.RUN_BOT_COMMADS:
-        u.current_command = u.getting_started
-    elif request in u.SHOW_MAIN_MENU:
-        u.current_command = u.show_main_menu
+    if request in user.RUN_BOT_COMMADS:
+        user.current_command = user.getting_started
+    elif request in user.SHOW_MAIN_MENU:
+        user.current_command = user.show_main_menu
     elif request == "зарегестрироваться как учитель":
-        u.current_command = u.teacher_registration
+        user.current_command = user.teacher_registration
     elif request == "зарегестрироваться как ученик":
-        u.current_command = u.student_registration
-    elif u.current_registration and not u.current_registration.registration_finished:
+        user.current_command = user.student_registration
+    elif user.current_registration and not user.current_registration.registration_finished:
         # В процессе регистрации ввод обрабатывается в command_executor
-        pass
+        return
     else:
-        u.unsupported_command_warning()
+        if getattr(user, "_current_command", None):
+            return
+        user.unsupported_command_warning()
 
 
-def _is_process_active(active_user) -> bool:
-    """Проверяет, активен ли у пользователя многошаговый процесс."""
-    if isinstance(active_user, Unregistered):
-        reg = getattr(active_user, "current_registration", None)
-        return bool(reg and not reg.registration_finished)
-    if isinstance(active_user, Teacher):
-        sc = getattr(active_user, "searchClass", None)
-        finished = getattr(sc, "registration_finished", True) if sc else True
-        return bool(sc and not finished)
-    return False
+def _has_pending_command(active_user) -> bool:
+    """Есть ли у пользователя отложенная команда (многошаговый процесс)."""
+    return bool(getattr(active_user, "_current_command", None))
 
 
 def route_message(msg, aggregated_user: AggregatedUser) -> None:
@@ -114,10 +114,6 @@ def route_message(msg, aggregated_user: AggregatedUser) -> None:
     ID = str(msg.chat.id)
 
     aggregated_user.reset_role_change_flag()
-
-    # Был ли активен пошаговый процесс до маршрутизации
-    active_before = aggregated_user.get_user()
-    was_in_process = _is_process_active(active_before) if active_before else False
 
     # Определяем роль и активный объект пользователя
     role = find_my_role(ID)
@@ -136,11 +132,7 @@ def route_message(msg, aggregated_user: AggregatedUser) -> None:
     else:
         handle_unregistered_commands(request, active)
 
-    # Выполнение отложенных команд/процессов с корректным порядком обновления ввода
-    if was_in_process:
-        aggregated_user.update_last_request(request)
-        aggregated_user.command_executor()
-    else:
-        aggregated_user.command_executor()
-        aggregated_user.update_last_request(request)
+    # Сначала обновляем ввод, затем выполняем команду — это важно для процессов, ожидающих ввод
+    aggregated_user.update_last_request(request)
+    aggregated_user.command_executor()
 

@@ -8,9 +8,11 @@
 - корректно управляет многошаговыми процессами (регистрация, поиск класса).
 """
 import core
-from features import theory
-from users import User as AggregatedUser
-from users import Student, Teacher, Unregistered, find_my_role
+from theory import handler as theory
+from base import User as AggregatedUser, find_my_role
+from student import Student
+from teacher import Teacher
+from unregistered import Unregistered
 
 
 def handle_student_commands(request: str, user: Student):

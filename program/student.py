@@ -4,7 +4,7 @@ from database import Manager, Tables
 import keyboards
 import core
 from LLM import LLM
-from .base import Registered
+from base import Registered
 
 
 class Student(Registered):

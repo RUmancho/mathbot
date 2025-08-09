@@ -5,7 +5,7 @@ import config
 import keyboards
 import core
 from core import cancelable
-from .base import User
+from base import User
 
 
 class Unregistered(User):

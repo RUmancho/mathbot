@@ -123,13 +123,10 @@ class Registered(User):
     def _cancelable_delete(self):
         """Шаг выполнения удаления профиля с корректным завершением процесса."""
         try:
-            # передаём последний ввод в процесс и выполняем шаг
             self.delete_profile_process.update_last_request(self._current_request)
             self.delete_profile_process.execute()
-            # если процесс завершён — очищаем текущую команду, перевыставляем процесс
             if not getattr(self.delete_profile_process, "_is_active", False):
                 self._current_command = None
-                # готовим новый процесс для следующего вызова в будущем
                 try:
                     self.delete_profile_process = self.DeleteProfile(self._ID)
                 except Exception:

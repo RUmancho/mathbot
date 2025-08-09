@@ -5,7 +5,7 @@ from database import Manager, Tables
 import keyboards
 import core
 from LLM import LLM
-from .base import Registered
+from base import Registered
 
 
 class Teacher(Registered):
@@ -142,7 +142,6 @@ class Teacher(Registered):
                 raise core.UserInputError("invalid class")
 
         def perform_search(self):
-            # делегируем существующей реализации поиска
             try:
                 data = {
                     "city": self._data.get("city"),
@@ -157,7 +156,6 @@ class Teacher(Registered):
         try:
             self.class_search_process = self.SearchClassProcess(self._ID, self)
             self._current_command = self._cancelable_execute_search_class
-            # вывести первый вопрос
             self._current_command()
             return True
         except Exception:

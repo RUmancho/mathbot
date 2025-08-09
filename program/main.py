@@ -1,4 +1,4 @@
-from users import User
+from base import User
 import telebot
 import config
 from router import route_message

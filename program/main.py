@@ -1,4 +1,4 @@
-import user
+from users import User
 import telebot
 import config
 import core
@@ -7,7 +7,7 @@ from router import route_message
 bot = telebot.TeleBot(config.BOT_TOKEN)
 core.ButtonCollector.set_bot(bot)
 
-new_user = user.User("", bot)
+new_user = User("", bot)
 
 @bot.message_handler()
 def main(msg):

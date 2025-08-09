@@ -44,11 +44,15 @@ class User:
 
         Возвращает активный экземпляр роли для дальнейшей работы.
         """
-        if not isinstance(self.instance, user_class) or self.instance.get_ID() != ID:
+        needs_new_instance = (
+            self.instance is None
+            or not isinstance(self.instance, user_class)
+            or self.instance.get_ID() != ID
+        )
+        if needs_new_instance:
             self.instance = user_class(ID, self._telegramBot)
             self._role_changed = True
         else:
-            # keep same instance; just ensure bot and id are up-to-date
             self.instance._telegramBot = self._telegramBot
             self.instance.set_ID(ID)
             self._role_changed = False
@@ -189,6 +193,25 @@ class Registered(User):
         """Возвращает значение столбца `column` из записи текущего пользователя."""
         return Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, column)
 
+    # region Общая отмена действий для зарегистрированных
+    def cancel_current_action(self):
+        """Очищает состояние активных процессов пользователя (если поддерживаются)."""
+        # Остановка произвольного процесса, если он есть
+        for attr in ("ai_process", "group_ai_process"):
+            proc = getattr(self, attr, None)
+            try:
+                if isinstance(proc, core.Process):
+                    proc.stop()
+            except Exception:
+                pass
+            try:
+                setattr(self, attr, None)
+            except Exception:
+                pass
+        # Сброс команды
+        self._current_command = None
+    # endregion
+
 
  
     
@@ -201,8 +224,13 @@ class Teacher(Registered):
         self.searchClass = []
         self._ref = f"tg://user?id={self._ID}"
         self.llm = LLM()  # Инициализация LLM для учителя
+        try:
+            self.llm.set_role("math teacher")
+        except Exception:
+            pass
         # Button instance will be prepared on demand in search_class
-    
+        self.ai_process = None
+
     def search_class(self):
         """Начинает многошаговый процесс поиска класса по городу/школе/классу."""
         self.searchClass = btn.Teacher.search_class()
@@ -376,12 +404,109 @@ class Teacher(Registered):
             self.text_out("Произошла ошибка при проверке заданий")
             return False
 
+    # region AI процессы (Учитель)
+    class _AIProcess(core.Process):
+        def __init__(self, ID, llm: LLM):
+            super().__init__(ID, cancelable=True)
+            self.llm = llm
+
+        def _say(self, text: str):
+            self._bot.send_message(self._me.get_ID(), text)
+
+    class CreateExplanationProcess(_AIProcess):
+        def __init__(self, ID, llm: LLM):
+            super().__init__(ID, llm)
+            self._chain = [self.ask_topic, self.make_explanation]
+            self._max_i = len(self._chain) - 1
+
+        def ask_topic(self):
+            self._say("Укажите тему, для которой нужно создать объяснение")
+
+        def make_explanation(self):
+            topic = self._current_request
+            try:
+                answer = self.llm.explain(topic)
+            except Exception:
+                answer = "Не получилось сгенерировать объяснение. Попробуйте позже."
+            self._say(answer)
+
+    class StudentAnalysisProcess(_AIProcess):
+        def __init__(self, ID, llm: LLM):
+            super().__init__(ID, llm)
+            self._chain = [self.ask_context, self.analyze]
+            self._max_i = len(self._chain) - 1
+
+        def ask_context(self):
+            self._say("Опишите уровень ученика и его трудности (кратко)")
+
+        def analyze(self):
+            ctx = self._current_request
+            prompt = f"Analyze a math student based on this context and give concrete advice: {ctx}"
+            try:
+                answer = self.llm.ask(prompt)
+            except Exception:
+                answer = "Не удалось выполнить анализ. Попробуйте позже."
+            self._say(answer)
+
+    class PersonalTaskProcess(_AIProcess):
+        def __init__(self, ID, llm: LLM):
+            super().__init__(ID, llm)
+            self._chain = [self.ask_params, self.generate]
+            self._max_i = len(self._chain) - 1
+
+        def ask_params(self):
+            self._say("Укажите тему и желаемый уровень сложности задания")
+
+        def generate(self):
+            params = self._current_request
+            prompt = f"Create a personalized math exercise with solution steps. Requirements: {params}"
+            try:
+                answer = self.llm.ask(prompt)
+            except Exception:
+                answer = "Не удалось сгенерировать задание. Попробуйте позже."
+            self._say(answer)
+
+    @cancelable
+    def _execute_ai(self):
+        if not self.ai_process:
+            return False
+        self.ai_process.update_last_request(self._current_request)
+        self.ai_process.execute()
+        if not getattr(self.ai_process, "_is_active", False):
+            self.ai_process = None
+            self._current_command = None
+        return True
+
+    def ai_show_menu(self):
+        self._telegramBot.send_message(self._ID, "AI-помощник (выберите действие)", reply_markup=keyboards.Teacher.ai_helper)
+
+    def ai_create_explanation(self):
+        self.ai_process = self.CreateExplanationProcess(self._ID, self.llm)
+        self._current_command = self._execute_ai
+        self._current_command()
+
+    def ai_student_analysis(self):
+        self.ai_process = self.StudentAnalysisProcess(self._ID, self.llm)
+        self._current_command = self._execute_ai
+        self._current_command()
+
+    def ai_personal_task(self):
+        self.ai_process = self.PersonalTaskProcess(self._ID, self.llm)
+        self._current_command = self._execute_ai
+        self._current_command()
+    # endregion
+
 
 class Student(Registered):
     """Реализация логики для роли Ученик."""
     def __init__(self, myID: str = "", bind_bot = None):
         super().__init__(myID, bind_bot)
         self.llm = LLM()  # Инициализация LLM для студента
+        try:
+            self.llm.set_role("math teacher")
+        except Exception:
+            pass
+        self.ai_process = None
 
     # removed duplicate show_main_menu; keep unified implementation below
 
@@ -524,6 +649,151 @@ class Student(Registered):
             print(f"Ошибка при отправке решения: {e}")
             self.text_out("Произошла ошибка при отправке решения")
             return False
+
+    # region AI процессы (Ученик)
+    class _AIProcess(core.Process):
+        def __init__(self, ID, llm: LLM):
+            super().__init__(ID, cancelable=True)
+            self.llm = llm
+
+        def _say(self, text: str):
+            self._bot.send_message(self._me.get_ID(), text)
+
+    class HelpWithProblemProcess(_AIProcess):
+        def __init__(self, ID, llm: LLM):
+            super().__init__(ID, llm)
+            self._chain = [self.ask_problem, self.help]
+            self._max_i = len(self._chain) - 1
+
+        def ask_problem(self):
+            self._say("Опишите задачу, с которой нужна помощь")
+
+        def help(self):
+            problem = self._current_request
+            try:
+                answer = self.llm.explain(problem)
+            except Exception:
+                answer = "Не удалось помочь с задачей. Попробуйте позже."
+            self._say(answer)
+
+    class ExplainTheoryProcess(_AIProcess):
+        def __init__(self, ID, llm: LLM):
+            super().__init__(ID, llm)
+            self._chain = [self.ask_topic, self.explain]
+            self._max_i = len(self._chain) - 1
+
+        def ask_topic(self):
+            self._say("Какую тему математики объяснить?")
+
+        def explain(self):
+            topic = self._current_request
+            try:
+                answer = self.llm.explain(topic)
+            except Exception:
+                answer = "Не удалось объяснить тему. Попробуйте позже."
+            self._say(answer)
+
+    class GetTipsProcess(_AIProcess):
+        def __init__(self, ID, llm: LLM):
+            super().__init__(ID, llm)
+            self._chain = [self.ask_area, self.tips]
+            self._max_i = len(self._chain) - 1
+
+        def ask_area(self):
+            self._say("Укажите тему/навык, по которому нужны советы")
+
+        def tips(self):
+            area = self._current_request
+            prompt = f"Give practical tips to study and master: {area}"
+            try:
+                answer = self.llm.ask(prompt)
+            except Exception:
+                answer = "Не удалось получить советы. Попробуйте позже."
+            self._say(answer)
+
+    class LearningPlanProcess(_AIProcess):
+        def __init__(self, ID, llm: LLM):
+            super().__init__(ID, llm)
+            self._chain = [self.ask_goal, self.plan]
+            self._max_i = len(self._chain) - 1
+
+        def ask_goal(self):
+            self._say("Опишите цель обучения и текущий уровень")
+
+        def plan(self):
+            goal = self._current_request
+            prompt = f"Create a concise math learning plan with milestones. Input: {goal}"
+            try:
+                answer = self.llm.ask(prompt)
+            except Exception:
+                answer = "Не удалось создать план. Попробуйте позже."
+            self._say(answer)
+
+    class CheckSolutionProcess(_AIProcess):
+        def __init__(self, ID, llm: LLM):
+            super().__init__(ID, llm)
+            self.problem = None
+            self._chain = [self.ask_problem, self.ask_solution, self.check]
+            self._max_i = len(self._chain) - 1
+
+        def ask_problem(self):
+            self._say("Отправьте условие задачи")
+
+        def ask_solution(self):
+            self.problem = self._current_request
+            self._say("Отправьте ваше решение")
+
+        def check(self):
+            solution = self._current_request
+            prompt = (
+                "Check the student's math solution. Provide correctness, errors, and suggestions.\n"
+                f"Problem: {self.problem}\nSolution: {solution}"
+            )
+            try:
+                answer = self.llm.ask(prompt)
+            except Exception:
+                answer = "Не удалось проверить решение. Попробуйте позже."
+            self._say(answer)
+
+    @cancelable
+    def _execute_ai(self):
+        if not self.ai_process:
+            return False
+        self.ai_process.update_last_request(self._current_request)
+        self.ai_process.execute()
+        if not getattr(self.ai_process, "_is_active", False):
+            self.ai_process = None
+            self._current_command = None
+        return True
+
+    def ai_show_menu(self):
+        self._telegramBot.send_message(self._ID, "AI-помощник (выберите действие)", reply_markup=keyboards.Student.ai_helper)
+
+    def ai_help_with_problem(self):
+        self.ai_process = self.HelpWithProblemProcess(self._ID, self.llm)
+        self._current_command = self._execute_ai
+        self._current_command()
+
+    def ai_explain_theory(self):
+        self.ai_process = self.ExplainTheoryProcess(self._ID, self.llm)
+        self._current_command = self._execute_ai
+        self._current_command()
+
+    def ai_get_tips(self):
+        self.ai_process = self.GetTipsProcess(self._ID, self.llm)
+        self._current_command = self._execute_ai
+        self._current_command()
+
+    def ai_learning_plan(self):
+        self.ai_process = self.LearningPlanProcess(self._ID, self.llm)
+        self._current_command = self._execute_ai
+        self._current_command()
+
+    def ai_check_solution(self):
+        self.ai_process = self.CheckSolutionProcess(self._ID, self.llm)
+        self._current_command = self._execute_ai
+        self._current_command()
+    # endregion
 
     
 class Unregistered(User):

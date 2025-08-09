@@ -8,11 +8,12 @@
 - корректно управляет многошаговыми процессами (регистрация, поиск класса).
 """
 import core
-import theory
-import user
+from features import theory
+from users import User as AggregatedUser
+from users import Student, Teacher, Unregistered, find_my_role
 
 
-def handle_student_commands(request: str, u: user.Student):
+def handle_student_commands(request: str, u: Student):
     """Обработка команд, характерных для роли «Ученик»."""
     is_response = theory.handler(request, u.text_out, u.get_ID())
     if is_response:
@@ -36,7 +37,7 @@ def handle_student_commands(request: str, u: user.Student):
         u.unsupported_command_warning()
 
 
-def handle_teacher_commands(request: str, u: user.Teacher):
+def handle_teacher_commands(request: str, u: Teacher):
     """Обработка команд, характерных для роли «Учитель»."""
     is_response = theory.handler(request, u.text_out, u.get_ID())
     if is_response:
@@ -68,7 +69,7 @@ def handle_teacher_commands(request: str, u: user.Teacher):
         u.unsupported_command_warning()
 
 
-def handle_unregistered_commands(request: str, u: user.Unregistered):
+def handle_unregistered_commands(request: str, u: Unregistered):
     """Обработка команд для незарегистрированного пользователя (гостя)."""
     is_response = theory.handler(request, u.text_out, u.get_ID())
     if is_response:
@@ -91,17 +92,17 @@ def handle_unregistered_commands(request: str, u: user.Unregistered):
 
 def _is_process_active(active_user) -> bool:
     """Проверяет, активен ли у пользователя многошаговый процесс."""
-    if isinstance(active_user, user.Unregistered):
+    if isinstance(active_user, Unregistered):
         reg = getattr(active_user, "current_registration", None)
         return bool(reg and not reg.registration_finished)
-    if isinstance(active_user, user.Teacher):
+    if isinstance(active_user, Teacher):
         sc = getattr(active_user, "searchClass", None)
         finished = getattr(sc, "registration_finished", True) if sc else True
         return bool(sc and not finished)
     return False
 
 
-def route_message(msg, aggregated_user: user.User) -> None:
+def route_message(msg, aggregated_user: AggregatedUser) -> None:
     """Главная точка входа для обработки сообщения.
 
     Параметры:
@@ -119,18 +120,18 @@ def route_message(msg, aggregated_user: user.User) -> None:
     was_in_process = _is_process_active(active_before) if active_before else False
 
     # Определяем роль и активный объект пользователя
-    role = user.find_my_role(ID)
+    role = find_my_role(ID)
     if role == "ученик":
-        active = aggregated_user.set_role(user.Student, ID)
+        active = aggregated_user.set_role(Student, ID)
     elif role == "учитель":
-        active = aggregated_user.set_role(user.Teacher, ID)
+        active = aggregated_user.set_role(Teacher, ID)
     else:
-        active = aggregated_user.set_role(user.Unregistered, ID)
+        active = aggregated_user.set_role(Unregistered, ID)
 
     # Маршрутизация команд согласно роли
-    if isinstance(active, user.Student):
+    if isinstance(active, Student):
         handle_student_commands(request, active)
-    elif isinstance(active, user.Teacher):
+    elif isinstance(active, Teacher):
         handle_teacher_commands(request, active)
     else:
         handle_unregistered_commands(request, active)

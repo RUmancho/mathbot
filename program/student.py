@@ -2,7 +2,6 @@
 
 from database import Manager, Tables
 import keyboards
-import core
 from LLM import LLM
 from base import Registered
 

@@ -6,6 +6,7 @@ import keyboards
 import core
 from LLM import LLM
 from base import Registered
+from enums import AIMode
 
 
 class Teacher(Registered):
@@ -19,6 +20,7 @@ class Teacher(Registered):
         except Exception:
             pass
         self.ai_process = None
+        self._ai_mode: AIMode | None = None
         self.class_search_process = None
 
     def show_main_menu(self):
@@ -41,7 +43,8 @@ class Teacher(Registered):
     def assign_individual_task(self):
         """Запускает процесс формирования индивидуального задания (заглушка)."""
         try:
-            self._telegramBot.send_message(self._ID, "Функция индивидуальных заданий в разработке", reply_markup=keyboards.Teacher.main)
+            self._telegramBot.send_message(self._ID, "Пришлите текст индивидуального задания для ученика", reply_markup=keyboards.Teacher.main)
+            self._current_command = self._receive_individual_task
             return True
         except Exception as e:
             print(f"Ошибка при создании индивидуального задания: {e}")
@@ -51,7 +54,8 @@ class Teacher(Registered):
     def assign_class_task(self):
         """Запускает процесс выдачи задания для класса (заглушка)."""
         try:
-            self._telegramBot.send_message(self._ID, "Функция заданий для класса в разработке", reply_markup=keyboards.Teacher.main)
+            self._telegramBot.send_message(self._ID, "Пришлите текст задания для класса", reply_markup=keyboards.Teacher.main)
+            self._current_command = self._receive_class_task
             return True
         except Exception as e:
             print(f"Ошибка при создании задания для класса: {e}")
@@ -71,7 +75,8 @@ class Teacher(Registered):
     def check_individual_tasks(self):
         """Показывает индивидуальные задания для проверки (заглушка)."""
         try:
-            self._telegramBot.send_message(self._ID, "Функция проверки индивидуальных заданий в разработке", reply_markup=keyboards.Teacher.main)
+            self._telegramBot.send_message(self._ID, "Загрузите решение ученика текстом. Я помогу проверить.", reply_markup=keyboards.Teacher.main)
+            self._current_command = self._ai_check_individual_solution
             return True
         except Exception as e:
             print(f"Ошибка при проверке индивидуальных заданий: {e}")
@@ -81,7 +86,8 @@ class Teacher(Registered):
     def check_class_tasks(self):
         """Показывает задания класса для проверки (заглушка)."""
         try:
-            self._telegramBot.send_message(self._ID, "Функция проверки заданий класса в разработке", reply_markup=keyboards.Teacher.main)
+            self._telegramBot.send_message(self._ID, "Пришлите текст решений учащихся одним сообщением для анализа.", reply_markup=keyboards.Teacher.main)
+            self._current_command = self._ai_check_class_solutions
             return True
         except Exception as e:
             print(f"Ошибка при проверке заданий класса: {e}")
@@ -221,6 +227,69 @@ class Teacher(Registered):
             )
         self._telegramBot.send_message(self._ID, "Заявка отправлена", reply_markup=keyboards.Teacher.main)
         return True
+
+    # ===== Teacher task reception helpers =====
+    def _receive_individual_task(self):
+        try:
+            text = getattr(self, "_current_request", "").strip()
+            if not text:
+                return False
+            # Здесь можно сохранить в БД; пока отправим подтверждение
+            self._telegramBot.send_message(self._ID, "Индивидуальное задание сформировано и сохранено", reply_markup=keyboards.Teacher.main)
+            self._current_command = None
+            return True
+        except Exception:
+            self._current_command = None
+            return False
+
+    def _receive_class_task(self):
+        try:
+            text = getattr(self, "_current_request", "").strip()
+            if not text:
+                return False
+            self._telegramBot.send_message(self._ID, "Задание для класса сформировано и сохранено", reply_markup=keyboards.Teacher.main)
+            self._current_command = None
+            return True
+        except Exception:
+            self._current_command = None
+            return False
+
+    # ===== AI helpers for teacher =====
+    @core.cancelable
+    def _ai_check_individual_solution(self):
+        try:
+            text = getattr(self, "_current_request", "").strip()
+            if not text:
+                return False
+            prompt = (
+                "Проверь решение ученика. Найди ошибки и предложи улучшения. "
+                "Критерии: корректность, полнота, логика. Текст: " + text
+            )
+            answer = self.llm.ask(prompt)
+            self._telegramBot.send_message(self._ID, answer, reply_markup=keyboards.Teacher.main)
+            self._current_command = None
+            return True
+        except Exception:
+            self._current_command = None
+            return False
+
+    @core.cancelable
+    def _ai_check_class_solutions(self):
+        try:
+            text = getattr(self, "_current_request", "").strip()
+            if not text:
+                return False
+            prompt = (
+                "Суммируй типичные ошибки в работах класса и предложи рекомендации по теме. "
+                "Дай список частых ошибок и план их устранения. Текст: " + text
+            )
+            answer = self.llm.ask(prompt)
+            self._telegramBot.send_message(self._ID, answer, reply_markup=keyboards.Teacher.main)
+            self._current_command = None
+            return True
+        except Exception:
+            self._current_command = None
+            return False
 
     @core.log
     def show_my_students(self):

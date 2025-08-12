@@ -2,6 +2,7 @@ from database import *
 import colorama
 import telebot
 import config
+import os
 colorama.init()
 
 class UserInputError(Exception):
@@ -58,11 +59,29 @@ class Process:
         try:
             # помечаем процесс как активный на время выполнения шага
             self._is_active = True
+            # Выполняем текущий шаг
             self._chain[self._i]()
+            # Переходим к следующему шагу или завершаем
             if self._i < self._max_i:
-                self._i += 1 
+                self._i += 1
             else:
                 self.stop()
+                return
+
+            # Если следующий шаг — это ask_* (запрос ввода), выполняем его сразу,
+            # чтобы пользователь сразу получил следующий вопрос.
+            if self._is_active and self._i <= self._max_i:
+                try:
+                    next_step = self._chain[self._i]
+                    step_name = getattr(next_step, "__name__", "")
+                    if isinstance(step_name, str) and step_name.startswith("ask_"):
+                        next_step()
+                        if self._i < self._max_i:
+                            self._i += 1
+                        else:
+                            self.stop()
+                except Exception as inner_e:
+                    print(f"Ошибка при выполнении следующего шага процесса: {inner_e}")
         except UserInputError as e:
             print(f"Пользователь {self._me.name} неверно ввёл запрошенные данные")
 
@@ -76,6 +95,8 @@ class FileSender:
     unzipped_text_document = True # позволить боту отправить сразу текст из файла
     bot = telebot.TeleBot(config.BOT_TOKEN)
     chat_id = None
+    # Базовая директория проекта (на уровень выше папки program)
+    PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
     def __init__(self, keyboard=None, *args):
         self.keyboard = keyboard
@@ -110,29 +131,66 @@ class FileSender:
             else:
                 self.file_handlers[path](path, keyboard = self.keyboard)
 
+    def _resolve_path(self, path: str) -> str:
+        """Возвращает корректный путь к файлу независимо от рабочей директории.
+        1) Если путь абсолютный — возвращаем как есть.
+        2) Если существует относительно текущей cwd — используем его.
+        3) Иначе пробуем относительно корня проекта (на уровень выше program).
+        """
+        try:
+            if os.path.isabs(path):
+                return path
+            if os.path.exists(path):
+                return path
+            candidate = os.path.normpath(os.path.join(self.PROJECT_ROOT, path))
+            return candidate
+        except Exception as e:
+            print(f"Ошибка разрешения пути '{path}': {e}")
+            return path
+
     def __push_image(self, path: str, keyboard = None, caption: str = None):
-        with open(path, 'rb') as file:
-            self.bot.send_photo(self.chat_id, file, reply_markup = keyboard, caption=caption)
+        try:
+            resolved = self._resolve_path(path)
+            with open(resolved, 'rb') as file:
+                self.bot.send_photo(self.chat_id, file, reply_markup = keyboard, caption=caption)
+        except Exception as e:
+            print(f"Ошибка отправки изображения '{path}': {e}")
 
     def __push_document(self, path: str, keyboard = None, caption: str = None):
-        with open(path, 'rb') as file:
-            self.bot.send_document(self.chat_id, file, reply_markup = keyboard, caption=caption)
+        try:
+            resolved = self._resolve_path(path)
+            with open(resolved, 'rb') as file:
+                self.bot.send_document(self.chat_id, file, reply_markup = keyboard, caption=caption)
+        except Exception as e:
+            print(f"Ошибка отправки документа '{path}': {e}")
 
     def __push_audio(self, path: str, keyboard = None, caption: str = None):
-        with open(path, 'rb') as file:
-            self.bot.send_audio(self.chat_id, file, reply_markup = keyboard, caption=caption)
+        try:
+            resolved = self._resolve_path(path)
+            with open(resolved, 'rb') as file:
+                self.bot.send_audio(self.chat_id, file, reply_markup = keyboard, caption=caption)
+        except Exception as e:
+            print(f"Ошибка отправки аудио '{path}': {e}")
 
     def __push_video(self, path: str, keyboard = None, caption: str = None):
-        with open(path, 'rb') as file:
-            self.bot.send_video(self.chat_id, file, reply_markup = keyboard, caption=caption)
+        try:
+            resolved = self._resolve_path(path)
+            with open(resolved, 'rb') as file:
+                self.bot.send_video(self.chat_id, file, reply_markup = keyboard, caption=caption)
+        except Exception as e:
+            print(f"Ошибка отправки видео '{path}': {e}")
 
     def __push_unzipped_text_document(self, path: str, keyboard = None, caption: str = None):
-        with open(path, 'r', encoding='utf-8') as file:
-            text = file.read()
+        try:
+            resolved = self._resolve_path(path)
+            with open(resolved, 'r', encoding='utf-8') as file:
+                text = file.read()
 
-            if caption is not None:
-                caption = f"\n{caption}\"\n"
-            self.bot.send_message(self.chat_id, f"{caption}\n{text}", reply_markup = keyboard)
+                if caption is not None:
+                    caption = f"\n{caption}\"\n"
+                self.bot.send_message(self.chat_id, f"{caption}\n{text}", reply_markup = keyboard)
+        except Exception as e:
+            print(f"Ошибка отправки текстового файла '{path}': {e}")
 
 
 ## Удалён класс Sender — ввод реализуется через core.Process

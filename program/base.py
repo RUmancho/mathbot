@@ -58,6 +58,12 @@ class User:
 
     def update_last_request(self, request: str):
         self._current_request = request
+        # Пробуем синхронизировать ввод и на вложенном экземпляре роли
+        try:
+            setattr(self.instance, "_current_request", request)
+        except Exception:
+            pass
+        # Если у роли есть собственный обработчик, делегируем ему
         try:
             self.instance.update_last_request(request)
         except Exception:
@@ -71,6 +77,10 @@ class User:
         func = getattr(self.instance, "_current_command", None)
         if callable(func):
             return func()
+
+    # Публичный способ проверки наличия отложенной команды
+    def has_pending_command(self) -> bool:
+        return bool(getattr(self.instance, "_current_command", None))
 
     @property
     def current_command(self):
@@ -86,14 +96,24 @@ class Registered(User):
         def __init__(self, ID, cancelable: bool = True):
             super().__init__(ID, cancelable)
             self._chain = [self.ask_for_password, self.password_entry_verification]
+            # Важно: корректно задать максимальный индекс шага после установки цепочки
+            self._max_i = len(self._chain) - 1
 
         def ask_for_password(self):
             self._bot.send_message(self._me.get_ID(), "Введите ваш пароль для удаления профиля")
 
         def password_entry_verification(self):
             if self._current_request == self._me.password:
-                self._bot.send_message(self._me.get_ID(), "Профиль удалён")
-                Manager.delete_record(Tables.Users, "telegram_id", self._me.get_ID())
+                try:
+                    deleted = Manager.delete_record(Tables.Users, "telegram_id", self._me.get_ID())
+                    if deleted:
+                        self._bot.send_message(self._me.get_ID(), "Профиль удалён")
+                    else:
+                        self._bot.send_message(self._me.get_ID(), "Не удалось удалить профиль. Попробуйте позже")
+                        self.stop()
+                except Exception:
+                    self._bot.send_message(self._me.get_ID(), "Произошла ошибка при удалении профиля")
+                    self.stop()
             else:
                 self._bot.send_message(self._me.get_ID(), "Неверный пароль, повторите попытку")
                 raise core.UserInputError("password entry error")

@@ -31,9 +31,15 @@ if resource == {}:
 relatives_paths = get_values_from_json(resource)
 error = False
 
+# Allow missing database file: it will be created by SQLAlchemy on first use
+database_rel_path = resource.get("database")
+
 for path in relatives_paths:
     exit_folder = f"../{path}"
     if not os.path.exists(exit_folder):
+        if path == database_rel_path:
+            # Database file will be created automatically; skip error
+            continue
         print(f"{colorama.Fore.RED}File path not found:  {exit_folder}")
         error = True
 print(colorama.Fore.WHITE)

@@ -4,6 +4,8 @@ from database import Manager, Tables
 import keyboards
 from LLM import LLM
 from base import Registered
+import core
+from enums import AIMode
 
 
 class Student(Registered):
@@ -15,6 +17,7 @@ class Student(Registered):
         except Exception:
             pass
         self.ai_process = None
+        self._ai_mode: AIMode | None = None  # режим работы AI помощника
 
     def show_main_menu(self):
         self._telegramBot.send_message(self._ID, "главная", reply_markup=keyboards.Student.main)
@@ -71,5 +74,124 @@ class Student(Registered):
     def submit_solution(self):
         self._telegramBot.send_message(self._ID, "Функция отправки решений в разработке", reply_markup=keyboards.Student.main)
         return True
+
+    # ====== AI Helper (Student) ======
+    def show_ai_helper_menu(self):
+        try:
+            self._telegramBot.send_message(self._ID, "Раздел AI Помощник", reply_markup=keyboards.Student.ai_helper)
+            self._current_command = None
+            return True
+        except Exception as e:
+            print(f"Ошибка показа меню AI помощника студента: {e}")
+            return False
+
+    def ai_help_with_problem(self):
+        try:
+            self._ai_mode = AIMode.HELP_PROBLEM
+            self._telegramBot.send_message(self._ID, "Пришлите условие задачи одним сообщением")
+            self._current_command = self._ai_receive_and_answer
+            return True
+        except Exception as e:
+            print(f"Ошибка запуска режима помощи с задачей: {e}")
+            return False
+
+    def ai_explain_theory(self):
+        try:
+            self._ai_mode = AIMode.EXPLAIN
+            self._telegramBot.send_message(self._ID, "Какую тему объяснить?")
+            self._current_command = self._ai_receive_and_answer
+            return True
+        except Exception as e:
+            print(f"Ошибка запуска объяснения теории: {e}")
+            return False
+
+    def ai_tips(self):
+        try:
+            self._ai_mode = AIMode.TIPS
+            self._telegramBot.send_message(self._ID, "По какой теме дать советы?")
+            self._current_command = self._ai_receive_and_answer
+            return True
+        except Exception as e:
+            print(f"Ошибка запуска советов AI: {e}")
+            return False
+
+    def ai_study_plan(self):
+        try:
+            self._ai_mode = AIMode.PLAN
+            self._telegramBot.send_message(self._ID, "Укажите тему и срок (например: Квадратные уравнения за 2 недели)")
+            self._current_command = self._ai_receive_and_answer
+            return True
+        except Exception as e:
+            print(f"Ошибка запуска планирования обучения: {e}")
+            return False
+
+    def ai_check_solution(self):
+        try:
+            self._ai_mode = AIMode.CHECK_SOLUTION
+            self._telegramBot.send_message(self._ID, "Пришлите условие задачи и ваше решение одним сообщением")
+            self._current_command = self._ai_receive_and_answer
+            return True
+        except Exception as e:
+            print(f"Ошибка запуска проверки решения: {e}")
+            return False
+
+    def ai_practice(self):
+        try:
+            self._ai_mode = AIMode.PRACTICE
+            self._telegramBot.send_message(self._ID, "Укажите тему, по которой нужны тренировки")
+            self._current_command = self._ai_receive_and_answer
+            return True
+        except Exception as e:
+            print(f"Ошибка запуска практики: {e}")
+            return False
+
+    @staticmethod
+    def _build_prompt(mode: AIMode | None, text: str) -> str:
+        try:
+            if mode == AIMode.HELP_PROBLEM:
+                return f"Реши пошагово задачу, объясняя ход решения на русском языке: {text}"
+            if mode == AIMode.EXPLAIN:
+                return f"Подробно объясни тему на русском языке с примерами: {text}"
+            if mode == AIMode.TIPS:
+                return f"Дай краткие практические советы по теме: {text}"
+            if mode == AIMode.PLAN:
+                return f"Составь краткий, понятный план обучения по теме с разбивкой по дням/неделям: {text}"
+            if mode == AIMode.CHECK_SOLUTION:
+                return (
+                    "Проанализируй решение задачи. Укажи ошибки, если есть, и покажи корректное решение. "
+                    f"Текст: {text}"
+                )
+            if mode == AIMode.PRACTICE:
+                return (
+                    "Сгенерируй 5 практических задач по теме с ответами в конце. Формат: Задача 1, ... Ответы:. "
+                    f"Тема: {text}"
+                )
+            return text
+        except Exception as e:
+            print(f"Ошибка формирования промпта AI: {e}")
+            return text
+
+    @core.cancelable
+    def _ai_receive_and_answer(self):
+        try:
+            user_text = getattr(self, "_current_request", "").strip()
+            if not user_text:
+                return False
+            prompt = self._build_prompt(self._ai_mode, user_text)
+            answer = self.llm.ask(prompt)
+            self._telegramBot.send_message(self._ID, answer, reply_markup=keyboards.Student.ai_helper)
+            # Завершаем режим
+            self._ai_mode = None
+            self._current_command = None
+            return True
+        except Exception as e:
+            print(f"Ошибка ответа AI помощника студента: {e}")
+            try:
+                self._telegramBot.send_message(self._ID, "Произошла ошибка при обработке запроса AI")
+            except Exception:
+                pass
+            self._ai_mode = None
+            self._current_command = None
+            return False
 
 

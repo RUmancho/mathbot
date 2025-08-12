@@ -195,6 +195,7 @@ class Unregistered(User):
         except Exception:
             pass
 
+
     @cancelable
     def _cancelable_registration_execute(self):
         try:
@@ -212,10 +213,14 @@ class Unregistered(User):
 
     def getting_started(self):
         self._telegramBot.send_message(self._ID, self.START_MESSAGE, reply_markup=keyboards.Guest.main)
+        # Сброс команды, чтобы приветствие не повторялось при каждом сообщении
+        self._current_command = None
         return True
 
     def show_main_menu(self):
         self._telegramBot.send_message(self._ID, "главное меню", reply_markup=keyboards.Guest.main)
+        # Сброс команды после показа меню
+        self._current_command = None
         return True
 
 

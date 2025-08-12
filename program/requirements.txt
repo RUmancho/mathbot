@@ -1,10 +1,5 @@
 pytelegrambotapi
 python-dotenv
 sqlalchemy
-requests
 langchain
-langchain-openai
-openai
-httpx
-pydantic
 colorama 

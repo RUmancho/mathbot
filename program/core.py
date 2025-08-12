@@ -32,7 +32,7 @@ class UserRecognizer:
 
 class Process:
     CANCEL_KEYWORD = "отмена"
-    _bot = telebot.TeleBot(config.BOT_TOKEN)
+    _bot = None
 
     def __init__(self, ID, cancelable = True):
         self._me = UserRecognizer(ID)
@@ -85,6 +85,13 @@ class Process:
         except UserInputError as e:
             print(f"Пользователь {self._me.name} неверно ввёл запрошенные данные")
 
+    @classmethod
+    def set_bot(cls, bot_instance):
+        try:
+            cls._bot = bot_instance
+        except Exception as e:
+            print(f"Не удалось установить экземпляр бота для Process: {e}")
+
 
 class FileSender:
     IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp"]
@@ -93,7 +100,7 @@ class FileSender:
     VIDEO_EXTENSIONS = ["mp4", "avi", "mkv", "mov", "wmv", "flv", "webm"]
 
     unzipped_text_document = True # позволить боту отправить сразу текст из файла
-    bot = telebot.TeleBot(config.BOT_TOKEN)
+    bot = None
     chat_id = None
     # Базовая директория проекта (на уровень выше папки program)
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -120,6 +127,13 @@ class FileSender:
     @classmethod
     def set_chat_id(cls, chat_id):
         cls.chat_id = chat_id
+
+    @classmethod
+    def set_bot(cls, bot_instance):
+        try:
+            cls.bot = bot_instance
+        except Exception as e:
+            print(f"Не удалось установить экземпляр бота для FileSender: {e}")
 
     def push(self):
         sent = 0
@@ -151,6 +165,8 @@ class FileSender:
     def __push_image(self, path: str, keyboard = None, caption: str = None):
         try:
             resolved = self._resolve_path(path)
+            if not self.bot:
+                raise RuntimeError("Bot is not configured. Set via FileSender.set_bot(bot)")
             with open(resolved, 'rb') as file:
                 self.bot.send_photo(self.chat_id, file, reply_markup = keyboard, caption=caption)
         except Exception as e:
@@ -159,6 +175,8 @@ class FileSender:
     def __push_document(self, path: str, keyboard = None, caption: str = None):
         try:
             resolved = self._resolve_path(path)
+            if not self.bot:
+                raise RuntimeError("Bot is not configured. Set via FileSender.set_bot(bot)")
             with open(resolved, 'rb') as file:
                 self.bot.send_document(self.chat_id, file, reply_markup = keyboard, caption=caption)
         except Exception as e:
@@ -167,6 +185,8 @@ class FileSender:
     def __push_audio(self, path: str, keyboard = None, caption: str = None):
         try:
             resolved = self._resolve_path(path)
+            if not self.bot:
+                raise RuntimeError("Bot is not configured. Set via FileSender.set_bot(bot)")
             with open(resolved, 'rb') as file:
                 self.bot.send_audio(self.chat_id, file, reply_markup = keyboard, caption=caption)
         except Exception as e:
@@ -175,6 +195,8 @@ class FileSender:
     def __push_video(self, path: str, keyboard = None, caption: str = None):
         try:
             resolved = self._resolve_path(path)
+            if not self.bot:
+                raise RuntimeError("Bot is not configured. Set via FileSender.set_bot(bot)")
             with open(resolved, 'rb') as file:
                 self.bot.send_video(self.chat_id, file, reply_markup = keyboard, caption=caption)
         except Exception as e:
@@ -183,6 +205,8 @@ class FileSender:
     def __push_unzipped_text_document(self, path: str, keyboard = None, caption: str = None):
         try:
             resolved = self._resolve_path(path)
+            if not self.bot:
+                raise RuntimeError("Bot is not configured. Set via FileSender.set_bot(bot)")
             with open(resolved, 'r', encoding='utf-8') as file:
                 text = file.read()
 

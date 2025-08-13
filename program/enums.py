@@ -8,6 +8,7 @@ class AIMode(Enum):
     PLAN = "plan"
     CHECK_SOLUTION = "check_solution"
     PRACTICE = "practice"
+    GENERATE_TASK = "generate_task"
 
 
 class StudentCommands(Enum):

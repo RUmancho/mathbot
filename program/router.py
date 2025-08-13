@@ -36,6 +36,8 @@ def handle_student_commands(request: str, user: Student):
         user.get_tasks()
     elif request == "отправить решение":
         user.submit_solution()
+    elif request == "сгенерировать задание":
+        user.ai_generate_task()
     elif request == "ai помощник":
         user.show_ai_helper_menu()
     elif request == "помощь с задачей":
@@ -113,7 +115,7 @@ def handle_teacher_commands(request: str, user: Teacher):
         except Exception:
             pass
     elif request == "сгенерировать задание":
-        user.assign_individual_task()
+        user.ai_generate_task()
     elif request == "сгенерировать для класса":
         user.assign_class_task()
     elif request == "ai проверка":

@@ -145,6 +145,16 @@ class Student(Registered):
             print(f"Ошибка запуска практики: {e}")
             return False
 
+    def ai_generate_task(self):
+        try:
+            self._ai_mode = AIMode.GENERATE_TASK
+            self._telegramBot.send_message(self._ID, "Укажите тему, по которой сгенерировать одно задание (без решения)")
+            self._current_command = self._ai_receive_and_answer
+            return True
+        except Exception as e:
+            print(f"Ошибка запуска генерации задания: {e}")
+            return False
+
     @staticmethod
     def _build_prompt(mode: AIMode | None, text: str) -> str:
         try:
@@ -164,6 +174,12 @@ class Student(Registered):
             if mode == AIMode.PRACTICE:
                 return (
                     "Сгенерируй 5 практических задач по теме с ответами в конце. Формат: Задача 1, ... Ответы:. "
+                    f"Тема: {text}"
+                )
+            if mode == AIMode.GENERATE_TASK:
+                return (
+                    "Сгенерируй ОДНУ математическую задачу по теме с четкой формулировкой. "
+                    "Только условие без решения и без ответа. Формат: 'Задача: ...'. "
                     f"Тема: {text}"
                 )
             return text

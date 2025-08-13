@@ -94,6 +94,16 @@ class Teacher(Registered):
             self._telegramBot.send_message(self._ID, "Произошла ошибка при проверке заданий")
             return False
 
+    def ai_generate_task(self):
+        try:
+            self._ai_mode = AIMode.GENERATE_TASK
+            self._telegramBot.send_message(self._ID, "Укажите тему и уровень (например: Квадратные уравнения, базовый) — сгенерирую ОДНО задание без решения", reply_markup=keyboards.Teacher.main)
+            self._current_command = self._ai_generate_and_send
+            return True
+        except Exception as e:
+            print(f"Ошибка запуска генерации задания учителем: {e}")
+            return False
+
     class SearchClassProcess(core.Process):
         def __init__(self, ID, owner: "Teacher"):
             super().__init__(ID, cancelable=True)
@@ -282,6 +292,24 @@ class Teacher(Registered):
             prompt = (
                 "Суммируй типичные ошибки в работах класса и предложи рекомендации по теме. "
                 "Дай список частых ошибок и план их устранения. Текст: " + text
+            )
+            answer = self.llm.ask(prompt)
+            self._telegramBot.send_message(self._ID, answer, reply_markup=keyboards.Teacher.main)
+            self._current_command = None
+            return True
+        except Exception:
+            self._current_command = None
+            return False
+
+    @core.cancelable
+    def _ai_generate_and_send(self):
+        try:
+            text = getattr(self, "_current_request", "").strip()
+            if not text:
+                return False
+            prompt = (
+                "Сгенерируй ОДНУ математическую задачу по указанной теме и уровню. Только условие, без решения и ответа. "
+                "Формат: 'Задача: ...'. В случае неоднозначности задай 1 уточняющий вопрос в конце. Тема: " + text
             )
             answer = self.llm.ask(prompt)
             self._telegramBot.send_message(self._ID, answer, reply_markup=keyboards.Teacher.main)

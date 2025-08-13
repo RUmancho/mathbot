@@ -2,6 +2,9 @@ from langchain_ollama import OllamaLLM
 import re
 from enum import Enum, auto
 
+# Константы локального подключения к Ollama
+DEFAULT_MODEL = "phi"
+
 class ResponseType(Enum):
     CALCULATION = auto()  # Только числовой ответ
     EXPLANATION = auto()  # Развернутое объяснение
@@ -19,7 +22,8 @@ class LLM:
     }
 
     def __init__(self):
-        self.model = OllamaLLM(model="phi")
+        self.model = OllamaLLM(model=DEFAULT_MODEL)
+
         self.role = ""
         self.task = ""
         self.prompt = ""
@@ -82,12 +86,25 @@ class LLM:
         return expr
 
     def request(self) -> str:
-        response = self.model.invoke(self.prompt)
+        # Если модель не инициализирована — сообщаем об ошибке подключению
+        if self.model is None:
+            return (
+                "AI недоступен: не удалось установить соединение с локальной LLM. "
+                "Проверьте, запущен ли Ollama (ollama serve) и доступна ли модель."
+            )
+        try:
+            response_text = self.model.invoke(self.prompt)
+        except Exception as e:
+            print(f"Ошибка запроса к LLM: {e}")
+            return (
+                "AI недоступен: ошибка подключения к LLM. "
+                "Убедитесь, что Ollama запущен и доступен."
+            )
         
         # Для расчетов извлекаем только число
         if self.response_type == ResponseType.CALCULATION:
-            return self._extract_number(response)
-        return response
+            return self._extract_number(response_text)
+        return response_text
 
     def _extract_number(self, text: str) -> str:
         """Извлекает число из текста ответа"""

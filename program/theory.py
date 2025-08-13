@@ -1,3 +1,5 @@
+"""Отдаёт теоретические материалы и клавиатуры по запросу пользователя."""
+
 from resource import resource as res
 from core import FileSender
 import keyboards
@@ -36,6 +38,11 @@ algebra_theory = {
 }
 
 def handler(request, text_out, chat_id):
+    """Обрабатывает запросы к теоретическим материалам.
+
+    Возвращает True, если запрос обслужен (теория отправлена или предложены
+    подразделы), иначе False — чтобы дальнейшая логика обработала запрос.
+    """
     FileSender.set_chat_id(chat_id)
     if request in math.keys():
         text_out(math[request][0], math[request][1])

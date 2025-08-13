@@ -1,4 +1,8 @@
-"""Базовые классы и вспомогательные сущности для пользователей."""
+"""Базовые классы и вспомогательные сущности для пользователей.
+
+Содержит агрегатор `User`, общий класс для зарегистрированного пользователя
+`Registered` и вспомогательные механизмы выполнения команд.
+"""
 
 from database import Manager, Tables
 import core
@@ -9,6 +13,11 @@ def find_my_role(ID: str):
 
 
 class User:
+    """Агрегатор пользователя Telegram, делегирующий поведение ролям.
+
+    Отвечает за хранение текущего `chat_id`, телеграм‑бота, последнего ввода,
+    отложенной команды и переключение между реализациями ролей (ученик/учитель).
+    """
     RUN_BOT_COMMADS = ["/start"]
     SHOW_MAIN_MENU = ["/меню", "/главная", "/menu", "/main", "/home"]
 
@@ -22,6 +31,11 @@ class User:
         self.instance = None
 
     def set_role(self, user_class, ID: str):
+        """Назначает активную роль пользователя и возвращает её инстанс.
+
+        Создаёт новый экземпляр, если роли различаются или изменился ID,
+        иначе — переиспользует текущий, обновляя ссылку на бота.
+        """
         needs_new_instance = (
             self.instance is None
             or not isinstance(self.instance, user_class)
@@ -51,12 +65,15 @@ class User:
         self._ID = ID
 
     def text_out(self, text: str, markup=None):
+        """Утилита: отправка сообщения в чат текущему пользователю."""
         self._telegramBot.send_message(self._ID, text=text, reply_markup=markup)
 
     def unsupported_command_warning(self):
+        """Сообщение о неизвестной команде пользователю."""
         self.text_out("Неизвестная команда")
 
     def update_last_request(self, request: str):
+        """Синхронизирует последний ввод как на агрегаторе, так и на роли."""
         self._current_request = request
         # Пробуем синхронизировать ввод и на вложенном экземпляре роли
         try:
@@ -70,6 +87,7 @@ class User:
             pass
 
     def command_executor(self):
+        """Выполняет отложенную команду роли, если она есть."""
         instance_exec = getattr(self.instance.__class__, "command_executor", None)
         base_exec = getattr(User, "command_executor")
         if callable(instance_exec) and instance_exec is not base_exec:
@@ -92,7 +110,13 @@ class User:
 
 
 class Registered(User):
+    """Базовый класс для роли зарегистрированного пользователя.
+
+    Загружает профиль пользователя, обновляет `ref` и предоставляет процесс
+    удаления профиля с подтверждением паролем.
+    """
     class DeleteProfile(core.Process):
+        """Многошаговый процесс удаления профиля с валидацией пароля."""
         def __init__(self, ID, cancelable: bool = True):
             super().__init__(ID, cancelable)
             self._chain = [self.ask_for_password, self.password_entry_verification]
@@ -100,9 +124,11 @@ class Registered(User):
             self._max_i = len(self._chain) - 1
 
         def ask_for_password(self):
+            """Запрашивает пароль у пользователя."""
             self._bot.send_message(self._me.get_ID(), "Введите ваш пароль для удаления профиля")
 
         def password_entry_verification(self):
+            """Проверяет введённый пароль и удаляет профиль при успешном вводе."""
             if self._current_request == self._me.password:
                 try:
                     deleted = Manager.delete_record(Tables.Users, "telegram_id", self._me.get_ID())
@@ -132,7 +158,7 @@ class Registered(User):
         self.delete_profile_process = self.DeleteProfile(ID)
 
     def delete_account(self):
-        """Запускает удаление профиля с поддержкой отмены."""
+        """Запускает удаление профиля с поддержкой отмены (слово «отмена»)."""
         self._current_command = self._cancelable_delete
 
     @staticmethod
@@ -141,7 +167,7 @@ class Registered(User):
 
     @core.cancelable
     def _cancelable_delete(self):
-        """Шаг выполнения удаления профиля с корректным завершением процесса."""
+        """Шаг удаления профиля: выполняет процесс и корректно завершает его."""
         try:
             self.delete_profile_process.update_last_request(self._current_request)
             self.delete_profile_process.execute()
@@ -156,12 +182,14 @@ class Registered(User):
             return False
 
     def recognize_user(self):
+        """Загружает базовые данные профиля пользователя из БД."""
         self.name = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, "name")
         self.surname = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, "surname")
         self.password = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, "password")
         self.role = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, "role")
 
     def _reader_my_data(self, column: str):
+        """Читает произвольную колонку профиля пользователя из БД."""
         return Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, column)
 
 

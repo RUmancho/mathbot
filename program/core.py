@@ -1,3 +1,5 @@
+"""Базовая инфраструктура: процессы, отправка файлов, валидации, утилиты."""
+
 from database import *
 import colorama
 import telebot
@@ -6,10 +8,11 @@ import os
 colorama.init()
 
 class UserInputError(Exception):
-    """Вызывается при некорректно введённых данных"""
+    """Исключение при некорректно введённых данных."""
 
 
 class UserRecognizer:
+    """Читает и кэширует базовые поля пользователя из БД по `telegram_id`."""
     def __init__(self, ID: str):
         self._ID = ID
         self.name = self._reader("name")
@@ -31,6 +34,13 @@ class UserRecognizer:
 
 
 class Process:
+    """Базовый класс для многошаговых процессов с поддержкой отмены.
+
+    Процесс хранит цепочку шагов `_chain`. Методы `ask_*` задают вопрос,
+    `verify_*` — валидируют ответ. Метод `execute` корректно двигает процесс,
+    автоматически вызывая следующий `ask_*`, чтобы пользователь сразу видел
+    следующий вопрос.
+    """
     CANCEL_KEYWORD = "отмена"
     _bot = None
 
@@ -94,6 +104,7 @@ class Process:
 
 
 class FileSender:
+    """Утилита отправки изображений, документов, аудио, видео и текстов."""
     IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp"]
     DOCUMENT_EXTENSIONS = ["doc", "docx", "pdf", "xlsx", "xls", "ppt", "pptx", "txt"]
     AUDIO_EXTENSIONS = ["mp3", "wav", "ogg", "m4a", "aac", "flac"]
@@ -146,11 +157,7 @@ class FileSender:
                 self.file_handlers[path](path, keyboard = self.keyboard)
 
     def _resolve_path(self, path: str) -> str:
-        """Возвращает корректный путь к файлу независимо от рабочей директории.
-        1) Если путь абсолютный — возвращаем как есть.
-        2) Если существует относительно текущей cwd — используем его.
-        3) Иначе пробуем относительно корня проекта (на уровень выше program).
-        """
+        """Разрешает путь к файлу относительно cwd или корня проекта."""
         try:
             if os.path.isabs(path):
                 return path
@@ -221,12 +228,14 @@ class FileSender:
 
 
 class Validator:
+    """Статические валидаторы пользовательского ввода (русский язык)."""
     RU_ALPHABET = "абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
     RU_CLASS_PARALLEL = "абвг"
     DECIMAL_DIGITS = "0123456789"
 
     @staticmethod
     def name(string: str, alphabet: str = RU_ALPHABET):
+        """Разрешает только русские буквы для имени."""
         try:
             string = string.lower()
             for char in string:
@@ -243,6 +252,7 @@ class Validator:
 
     @staticmethod
     def city(string: str, lang: str = RU_ALPHABET):
+        """Разрешает русские буквы и пробелы в названии города."""
         try:
             string = string.lower()
             return all(char in lang or char == " " for char in string)
@@ -252,6 +262,7 @@ class Validator:
 
     @staticmethod
     def class_number(number: str, parallel: str = RU_CLASS_PARALLEL):
+        """Проверяет формат класса (1..11 + буква из `parallel`)."""
         try:
             class_num = int(number[:-1])
             letter = number[-1].lower()
@@ -262,6 +273,7 @@ class Validator:
 
     @staticmethod
     def school(number: str):
+        """Извлекает номер школы в конце строки и проверяет, что он > 0."""
         try:
             extract = number.split(" ")[-1]
             return int(extract) > 0
@@ -271,6 +283,7 @@ class Validator:
 
     @classmethod
     def create_password(cls, string: str, max_len: int = config.PASSWORD_LENGTH):
+        """Проверяет, что пароль цифровой и длиной `max_len`."""
         try:
             if len(string) != max_len:
                 return False
@@ -281,6 +294,7 @@ class Validator:
 
 
 class FuncChain:
+    """Последовательность функций, исполняемых при успешности шагов."""
     def __init__(self, *args):
         try:
             self.logic = args
@@ -289,6 +303,7 @@ class FuncChain:
             print(f"Ошибка при инициализации FuncChain: {e}")
 
     def next(self):
+        """Вызывает текущий шаг; при успехе продвигает индекс."""
         try:
             if self.i == len(self.logic):
                 self.isActive = False
@@ -303,6 +318,7 @@ class FuncChain:
             print(f"Ошибка в next FuncChain: {e}")
             
     def activate(self):
+        """Активирует последовательность с нулевого шага."""
         try:
             self.null()
             self.isActive = True
@@ -310,6 +326,7 @@ class FuncChain:
             print(f"Ошибка при активации FuncChain: {e}")
 
     def null(self):
+        """Сбрасывает состояние последовательности."""
         try:
             self.completion = False
             self.isActive = False
@@ -318,6 +335,7 @@ class FuncChain:
             print(f"Ошибка при сбросе FuncChain: {e}")
 
 class Button:
+    """Обёртка над FuncChain для запуска сценариев по кнопке UI."""
     def __init__(self, *args: callable):
         try:
             self.subsequence = FuncChain(*args)
@@ -325,6 +343,7 @@ class Button:
             print(f"Ошибка при создании Button: {e}")
     
     def exe(self):
+        """Запускает/продолжает выполнение последовательности кнопки."""
         try:
             if not self.subsequence.isActive:
                 self.subsequence.activate()
@@ -420,6 +439,7 @@ def cancelable(function: callable):
     return wrapper
 
 def log(function: callable):
+    """Декоратор логирования вызовов функций с цветным выводом."""
     def wrapper(*args):
         print(f"{colorama.Fore.GREEN}-------------------------------------------------------------")
         try:
@@ -433,6 +453,7 @@ def log(function: callable):
     return wrapper
 
 def extractor(collection: list[dict], key) -> list:
+    """Извлекает значения `key` из списка словарей."""
     try:
         extractValues = []
 
@@ -446,11 +467,11 @@ def extractor(collection: list[dict], key) -> list:
         return []
 
 def file_extension(path: str) -> str:
-    """Определяет расширение файла"""
+    """Определяет расширение файла."""
     return path.split(".")[-1]
 
 def transform_request(request: str):
-    """переводит регистр строки в нижний, а также заменяет букву "ё" на "е" """
+    """Нормализует: нижний регистр и замена "ё" на "е"."""
     request = request.lower().strip()
     if "ё" in request:
         request = request.replace("ё", "е")

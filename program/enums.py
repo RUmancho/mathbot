@@ -1,7 +1,13 @@
+"""Перечисления режимов AI и команд меню.
+
+Служат единым источником истины для текстовых констант и режимов.
+"""
+
 from enum import Enum
 
 
 class AIMode(Enum):
+    """Режимы работы AI‑помощника для ученика/учителя."""
     HELP_PROBLEM = "help_problem"
     EXPLAIN = "explain"
     TIPS = "tips"
@@ -12,6 +18,7 @@ class AIMode(Enum):
 
 
 class StudentCommands(Enum):
+    """Команды меню ученика (текстовые ярлыки на кнопках)."""
     PROFILE = "профиль"
     APPLICATIONS = "заявки"
     MY_TEACHERS = "мои учителя"
@@ -29,6 +36,7 @@ class StudentCommands(Enum):
 
 
 class TeacherCommands(Enum):
+    """Команды меню учителя (текстовые ярлыки на кнопках)."""
     PROFILE = "профиль"
     ATTACH_CLASS = "прикрепить класс"
     MY_STUDENTS = "ваши учащиеся"

@@ -1,3 +1,9 @@
+"""Обёртка над локальной LLM (Ollama) для ответов и объяснений.
+
+Поддерживает три типа ответов: вычисление, объяснение и краткий ответ.
+Подключение выполняется к локальной службе Ollama.
+"""
+
 from langchain_ollama import OllamaLLM 
 import re
 from enum import Enum, auto
@@ -6,12 +12,20 @@ from enum import Enum, auto
 DEFAULT_MODEL = "phi"
 
 class ResponseType(Enum):
+    """Тип запрашиваемого ответа от модели."""
     CALCULATION = auto()  # Только числовой ответ
     EXPLANATION = auto()  # Развернутое объяснение
     CONCISE = auto()      # Краткий ответ
 
 
 class LLM:
+    """Клиент локальной LLM (Ollama) с ролью учителя математики.
+
+    Предоставляет высокоуровневые методы:
+    - calculate: получить только числовой ответ;
+    - explain: подробное объяснение темы;
+    - ask: краткий ответ по существу.
+    """
     ROLES = {
         "math teacher": {
             "base": "You are a helpful math teacher.",
@@ -22,6 +36,7 @@ class LLM:
     }
 
     def __init__(self):
+        """Инициализирует подключение к локальной Ollama и состояния подсказки."""
         self.model = OllamaLLM(model=DEFAULT_MODEL)
 
         self.role = ""
@@ -30,15 +45,17 @@ class LLM:
         self.response_type = ResponseType.EXPLANATION  # По умолчанию объяснение
 
     def set_role(self, role: str) -> None:
+        """Устанавливает роль подсказки (поддерживается только 'math teacher')."""
         if role not in self.ROLES:
             raise ValueError("Unsupported model role selected")
         self.role = self.ROLES[role]["base"]
 
     def set_response_type(self, response_type: ResponseType) -> None:
+        """Меняет тип ответа модели (влияет на формирование промпта)."""
         self.response_type = response_type
 
     def calculate(self, expression: str) -> str:
-        """Для математических вычислений"""
+        """Возвращает только числовой результат выражения, без пояснений."""
         self.response_type = ResponseType.CALCULATION
         expression = self._normalize_expression(expression)
         self.task = f"Calculate: {expression}"
@@ -46,21 +63,21 @@ class LLM:
         return self.request()
 
     def explain(self, topic: str) -> str:
-        """Для объяснения концепций"""
+        """Пишет развернутое объяснение темы с примерами и шагами."""
         self.response_type = ResponseType.EXPLANATION
         self.task = f"Explain: {topic}"
         self._update_prompt()
         return self.request()
 
     def ask(self, question: str) -> str:
-        """Для кратких ответов на вопросы"""
+        """Даёт краткий ответ по существу на вопрос."""
         self.response_type = ResponseType.CONCISE
         self.task = f"Answer: {question}"
         self._update_prompt()
         return self.request()
 
     def _update_prompt(self):
-        """Формируем промпт в зависимости от типа ответа"""
+        """Формирует промпт на основе типа ответа и выбранной роли."""
         if self.response_type == ResponseType.CALCULATION:
             instruction = self.ROLES["math teacher"]["calculation"]
         elif self.response_type == ResponseType.EXPLANATION:
@@ -71,7 +88,7 @@ class LLM:
         self.prompt = f"{self.role} {instruction} {self.task}"
 
     def _normalize_expression(self, expr: str) -> str:
-        """Преобразуем текстовые описания в математические выражения"""
+        """Нормализует текстовые описания операций в форму, понятную модели."""
         expr = expr.lower().strip()
         replacements = {
             "squared": "^2",
@@ -86,7 +103,10 @@ class LLM:
         return expr
 
     def request(self) -> str:
-        # Если модель не инициализирована — сообщаем об ошибке подключению
+        """Отправляет промпт в модель и возвращает ответ.
+
+        При сетевой ошибке возвращает понятное уведомление вместо исключения.
+        """
         if self.model is None:
             return (
                 "AI недоступен: не удалось установить соединение с локальной LLM. "

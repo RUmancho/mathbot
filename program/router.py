@@ -1,11 +1,12 @@
 """Маршрутизация входящих сообщений бота.
 
-Содержит функции-обработчики команд для разных ролей (ученик, учитель,
-гость), а также главную функцию `route_message`, которая:
+Содержит обработчики команд для ролей «Ученик», «Учитель», «Гость», а также
+главную функцию `route_message`, которая:
 - нормализует входящее сообщение,
 - определяет роль пользователя,
 - делегирует обработку соответствующему обработчику,
-- корректно управляет многошаговыми процессами (регистрация, поиск класса).
+- корректно управляет многошаговыми процессами.
+Также содержит небольшой кэш агрегированных пользователей по chat_id.
 """
 import core
 import keyboards
@@ -15,9 +16,39 @@ from student import Student
 from teacher import Teacher
 from unregistered import Unregistered
 
+# Простой реестр агрегированных пользователей по chat_id
+_AGGREGATED_USERS: dict[str, AggregatedUser] = {}
+
+def get_or_create_user(bot, chat_id: str) -> AggregatedUser:
+    """Возвращает агрегированный объект пользователя для chat_id.
+
+    Если в кэше нет объекта — создаёт и сохраняет. Гарантирует актуальный bot.
+    """
+    try:
+        user = _AGGREGATED_USERS.get(chat_id)
+        if user is None:
+            user = AggregatedUser(chat_id, bot)
+            _AGGREGATED_USERS[chat_id] = user
+        else:
+            try:
+                user._telegramBot = bot
+            except Exception:
+                pass
+        return user
+    except Exception:
+        # На крайний случай создаём новый инстанс
+        try:
+            return AggregatedUser(chat_id, bot)
+        except Exception:
+            return None
+
 
 def handle_student_commands(request: str, user: Student):
-    """Обработка команд, характерных для роли «Ученик»."""
+    """Обрабатывает команды роли «Ученик».
+
+    Сначала проверяет запрос на соответствие теории и отдаёт материалы, иначе
+    роутит по действиям меню ученика.
+    """
     is_response = theory(request, user.text_out, user.get_ID())
     if is_response:
         return
@@ -64,7 +95,10 @@ def handle_student_commands(request: str, user: Student):
 
 
 def handle_teacher_commands(request: str, user: Teacher):
-    """Обработка команд, характерных для роли «Учитель»."""
+    """Обрабатывает команды роли «Учитель» (включая AI‑помощник).
+
+    Порядок: теория → меню учителя → AI‑режимы/проверки/назначение заданий.
+    """
     is_response = theory(request, user.text_out, user.get_ID())
     if is_response:
         return
@@ -135,7 +169,7 @@ def handle_teacher_commands(request: str, user: Teacher):
 
 
 def handle_unregistered_commands(request: str, user: Unregistered):
-    """Обработка команд для незарегистрированного пользователя (гостя)."""
+    """Обрабатывает команды гостя (незарегистрированного пользователя)."""
     is_response = theory(request, user.text_out, user.get_ID())
     if is_response:
         return
@@ -159,18 +193,11 @@ def handle_unregistered_commands(request: str, user: Unregistered):
         user.unsupported_command_warning()
 
 
-def _has_pending_command(active_user) -> bool:
-    """Есть ли у пользователя отложенная команда (многошаговый процесс)."""
-    return bool(getattr(active_user, "_current_command", None))
-
-
 def route_message(msg, aggregated_user: AggregatedUser) -> None:
-    """Главная точка входа для обработки сообщения.
+    """Главная точка входа обработки сообщения.
 
-    Параметры:
-    - msg: объект сообщения телеграма
-    - aggregated_user: агрегирующий объект пользователя, обеспечивающий доступ
-      к активной реализации роли и выполнению команд.
+    1) Нормализует текст; 2) Определяет роль; 3) Делегирует обработчику;
+    4) Обновляет ввод и выполняет отложенную команду, если есть.
     """
     request = core.transform_request(msg.text)
     ID = str(msg.chat.id)

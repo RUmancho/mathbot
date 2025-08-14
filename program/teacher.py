@@ -19,10 +19,8 @@ class Teacher(Registered):
         self.searchClass = []
         self._ref = f"tg://user?id={self._ID}"
         self.llm = LLM()
-        try:
-            self.llm.set_role("math teacher")
-        except Exception:
-            pass
+        self.llm.set_role("math teacher")
+
         self.ai_process = None
         self._ai_mode: AIMode | None = None
         self.class_search_process = None
@@ -63,7 +61,7 @@ class Teacher(Registered):
         self.out("Укажите тему и уровень (например: Квадратные уравнения, базовый) — сгенерирую ОДНО задание без решения", keyboards.Teacher.main)
         self._current_command = self._ai_generate_and_send
 
-    class SearchClassProcess(core.Process):
+    class SearchClass(core.Process):
         """Многошаговый процесс поиска класса (город → школа → класс → поиск).
 
         Наследует `core.Process` и использует цепочку ask/verify шагов с
@@ -142,7 +140,7 @@ class Teacher(Registered):
     def search_class(self):
         """Запускает многошаговый процесс поиска класса."""
         try:
-            self.class_search_process = self.SearchClassProcess(self._ID, self)
+            self.class_search_process = self.SearchClass(self._ID, self)
             self._current_command = self._cancelable_execute_search_class
             self._current_command()
         except Exception:

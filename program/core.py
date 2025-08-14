@@ -357,13 +357,9 @@ def cancelable(function: callable):
 
     Поведение:
     - Если последний ввод пользователя равен ключевому слову отмены
-      (`Process.CANCEL_KEYWORD` → «отмена»), декоратор пытается корректно
-      завершить активный процесс и очищает отложенную команду.
-    - Поддерживаются типовые сценарии:
-        • регистрация (`current_registration`: ButtonCollector),
-        • удаление профиля (`delete_profile_process`: Process),
-        • поиск класса у учителя (`searchClass`: ButtonCollector),
-        • а также очистка `_current_command`.
+      (`Process.CANCEL_KEYWORD` → «отмена»), декоратор корректно завершает
+      активные процессы на базе `core.Process` (регистрация, удаление профиля,
+      поиск класса) и очищает `_current_command`.
     - Пользователю отправляется уведомление «Действие отменено».
     """
 
@@ -380,36 +376,18 @@ def cancelable(function: callable):
                     except Exception:
                         pass
 
-                # Попытка отменить типовые процессы
-                # 1) Регистрация через ButtonCollector
-                reg = getattr(self, "current_registration", None)
-                if reg is not None and not getattr(reg, "registration_finished", True):
-                    try:
-                        reg.clear()
-                    except Exception:
-                        pass
-                    try:
-                        setattr(self, "current_registration", None)
-                    except Exception:
-                        pass
-
-                # 2) Удаление профиля (Process)
+                # Попытка отменить типовые процессы на базе Process
                 delete_proc = getattr(self, "delete_profile_process", None)
                 if isinstance(delete_proc, Process):
                     try:
                         delete_proc.stop()
                     except Exception:
                         pass
-
-                # 3) Поиск класса (ButtonCollector)
-                search = getattr(self, "searchClass", None)
-                if search is not None and not getattr(search, "registration_finished", True):
+                # Поиск класса как Process
+                class_proc = getattr(self, "class_search_process", None)
+                if isinstance(class_proc, Process):
                     try:
-                        search.clear()
-                    except Exception:
-                        pass
-                    try:
-                        setattr(self, "searchClass", [])
+                        class_proc.stop()
                     except Exception:
                         pass
 

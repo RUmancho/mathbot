@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, BLOB
+from sqlalchemy import create_engine, Column, Integer, String, BLOB, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from config import PASSWORD_LENGTH
@@ -8,58 +8,61 @@ Base = declarative_base()
 
 class Tables:
     class Singly(Base):
+        """Таблица заданий и решений"""
         __tablename__ = 'singly_assigment'
 
-        id = Column(Integer, primary_key=True, nullable=False)
-        teacher_id = Column(String)
-        task_filename = Column(String)
-        task_file = Column(BLOB)
-        student_id = Column(String)
-        solution_filename = Column(String)
-        solution_file = Column(BLOB)
-
-    class GroupSolution(Base):
-        __tablename__ = "group_solution"
-
-        id = Column(Integer, primary_key=True, nullable=False)
-        student_id = Column(String)
-        task_filename = Column(String)
-        solution_file = Column(BLOB)
-        solution_filename = Column(String)
-        teacher_id = Column(String)
-
-    class GroupAssignment(Base):
-        __tablename__ = "group_assignment"
-
-        id = Column(Integer, primary_key=True, nullable=False)
-        teacher_id = Column(String)
-        file = Column(BLOB)
-        filename = Column(String)
-        students_ids = Column(String)
-        city = Column(String)
-        school = Column(Integer)
-        selected_class = Column(String)
+        sender_id = Column(String)         # telegram_id отправителя задания
+        recipient_id = Column(String)      # telegram_id получателя задания
+        task_filename = Column(String)     # имя файла задания
+        task_file = Column(BLOB)           # файл задания
+        solution_filename = Column(String) # имя файла решения
+        solution_file = Column(BLOB)       # файл решения
+        due_date = Column(String)          # срок выполнения задания (человекочитаемо, опционально)
+        due_at = Column(Integer)           # дедлайн в UTC epoch seconds (рекомендуемый источник истины)
+        created_at = Column(Integer)       # время создания (UTC epoch seconds)
+        updated_at = Column(Integer)       # время обновления (UTC epoch seconds)
 
     class Users(Base):
+        """Таблица зарегестрированных пользователей"""
         __tablename__ = "users"
 
-        id = Column(Integer, primary_key=True, nullable=False)
-        telegram_id = Column(String)
-        password = Column(String(PASSWORD_LENGTH))
-        name = Column(String)
-        surname = Column(String)
-        role = Column(String)
-        attached_students = Column(String)
-        city = Column(String)
-        school = Column(Integer)
-        student_class = Column(String)
-        application = Column(String)
-        ref = Column(String)
-        my_teachers = Column(String)
+        telegram_id = Column(String, nullable=False, unique=True)  # telegram_id пользователя
+        username = Column(String, nullable=True, unique=True)      # @username пользователя
+        password = Column(String(PASSWORD_LENGTH), nullable=False) # пароль пользователя
+        name = Column(String, nullable=False)                      # имя пользователя
+        surname = Column(String, nullable=False)                   # фамилия пользователя
+        role = Column(String, nullable=False)                      # роль пользователя
+        my_students = Column(String, nullable=True)                # список прикреплённых учеников
+        city = Column(String, nullable=True)                       # город пользователя
+        school = Column(Integer, nullable=True)                    # школа пользователя
+        grade = Column(String, nullable=True)                      # класс пользователя
+        application = Column(String, nullable=True)                # заявки на прикрепление
+        my_teachers = Column(String, nullable=True)                # список учителей ученика
 
 relatative_path_database = f"../{resource.resource['database']}"
 engine = create_engine(f"sqlite:///{relatative_path_database}")
 Base.metadata.create_all(engine)
+
+def _ensure_columns(table_name: str, columns: dict[str, str]):
+    try:
+        with engine.connect() as conn:
+            result = conn.execute(text(f"PRAGMA table_info({table_name})"))
+            existing = {row[1] for row in result}
+            for col_name, col_type in columns.items():
+                if col_name not in existing:
+                    try:
+                        conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type}"))
+                    except Exception:
+                        pass
+    except Exception:
+        pass
+
+_ensure_columns('singly_assigment', {
+    'due_date': 'TEXT',
+    'due_at': 'INTEGER',
+    'created_at': 'INTEGER',
+    'updated_at': 'INTEGER',
+})
 
 class Manager:
     session = sessionmaker(bind=engine)

@@ -186,19 +186,67 @@ def route_message(msg, aggregated_user: AggregatedUser) -> None:
     else:
         active = aggregated_user.set_role(Unregistered, ID)
 
-    # Фиксируем, была ли отложенная команда ДО текущего сообщения
-    try:
-        had_pending_before = aggregated_user.has_pending_command()
-    except Exception:
-        had_pending_before = False
-
     # Обновляем ввод для корректной работы процессов
     aggregated_user.update_last_request(request)
 
-    # Если уже была отложенная команда — исполняем её и не мешаемся обработчиками меню
-    if had_pending_before:
-        aggregated_user.command_executor()
-        return
+    # Обработка активных процессов и режимов БЕЗ _current_command
+    # Unregistered: регистрация
+    if isinstance(active, Unregistered):
+        reg_proc = getattr(active, "reg_process", None)
+        if reg_proc is not None and getattr(reg_proc, "_is_active", True) is not False:
+            try:
+                active._cancelable_registration_execute()
+                return
+            except Exception:
+                pass
+
+    # Registered (общие процессы)
+    for usr in (active,):
+        delete_proc = getattr(usr, "delete_profile_process", None)
+        if getattr(delete_proc, "_is_active", False):
+            try:
+                usr._cancelable_delete()
+                return
+            except Exception:
+                pass
+
+    # Student: активный AI‑режим
+    if isinstance(active, Student):
+        if getattr(active, "_ai_mode", None) is not None:
+            try:
+                active._ai_receive_and_answer()
+                return
+            except Exception:
+                pass
+
+    # Teacher: активные процессы/ожидания ввода
+    if isinstance(active, Teacher):
+        class_proc = getattr(active, "class_search_process", None)
+        if class_proc is not None and getattr(class_proc, "_is_active", True) is not False:
+            try:
+                active._cancelable_execute_search_class()
+                return
+            except Exception:
+                pass
+        # Ожидания текста
+        if getattr(active, "_expect_individual_task", False):
+            try:
+                active._receive_individual_task()
+                return
+            except Exception:
+                pass
+        if getattr(active, "_expect_class_task", False):
+            try:
+                active._receive_class_task()
+                return
+            except Exception:
+                pass
+        if getattr(active, "_expect_ai_check_individual", False):
+            try:
+                active._ai_check_individual_solution()
+                return
+            except Exception:
+                pass
 
     # Иначе — обычная маршрутизация команд согласно роли
     if isinstance(active, Student):
@@ -207,7 +255,4 @@ def route_message(msg, aggregated_user: AggregatedUser) -> None:
         handle_teacher_commands(request, active)
     else:
         handle_unregistered_commands(request, active)
-
-    # ВАЖНО: не исполняем только что установленные _current_command сразу.
-    # Они будут исполнены на следующем сообщении пользователя.
 

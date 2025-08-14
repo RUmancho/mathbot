@@ -152,7 +152,23 @@ class Registered(User):
         self.role = None
         self.recognize_user()
         try:
-            Manager.update_record(Tables.Users, "telegram_id", self._ID, "ref", f"tg://user?id={self._ID}")
+            username = None
+            try:
+                if hasattr(self, "_telegramBot") and self._telegramBot:
+                    chat = self._telegramBot.get_chat(self._ID)
+                    username = getattr(chat, "username", None)
+            except Exception as e:
+                print(f"Не удалось получить username Telegram: {e}")
+            ref_value = f"@{username}" if username else None
+            Manager.update_record(Tables.Users, "telegram_id", self._ID, "ref", ref_value)
+            if not username:
+                try:
+                    self._telegramBot.send_message(
+                        self._ID,
+                        "У вас не задано имя пользователя (@username). Зайдите в Настройки Telegram → Имя пользователя и задайте его, чтобы вас могли упоминать."
+                    )
+                except Exception:
+                    pass
         except Exception:
             pass
         self.delete_profile_process = self.DeleteProfile(ID)

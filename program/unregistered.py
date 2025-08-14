@@ -73,7 +73,7 @@ class Unregistered(User):
                     name=self._data.get("name"),
                     surname=self._data.get("surname"),
                     password=self._data.get("password"),
-                    ref=f"tg://user?id={self._me.get_ID()}"
+                    ref=None
                 )
                 Manager.write(record)
                 self._send("Вы зарегистрированы как учитель")
@@ -160,7 +160,7 @@ class Unregistered(User):
                     city=self._data.get("city"),
                     school=self._data.get("school"),
                     student_class=self._data.get("student_class"),
-                    ref=f"tg://user?id={self._me.get_ID()}"
+                    ref=None
                 )
                 Manager.write(record)
                 self._send("Вы зарегистрированы как ученик")

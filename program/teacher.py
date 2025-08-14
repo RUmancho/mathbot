@@ -17,7 +17,7 @@ class Teacher(Registered):
     def __init__(self, myID: str = "", bind_bot=None):
         super().__init__(myID, bind_bot)
         self.searchClass = []
-        self._ref = f"tg://user?id={self._ID}"
+        self.ref = None
         self.llm = LLM()
         self.llm.set_role("math teacher")
 
@@ -40,12 +40,12 @@ class Teacher(Registered):
     def assign_individual_task(self):
         """Запрашивает текст индивидуального задания для конкретного ученика."""
         self.out("Пришлите текст индивидуального задания для ученика", keyboards.Teacher.main)
-        self._current_command = self._receive_individual_task
+        self._expect_individual_task = True
 
     def assign_class_task(self):
         """Запрашивает текст задания для класса (будет отправлено всем ученикам)."""
         self.out("Пришлите текст задания для класса", keyboards.Teacher.main)
-        self._current_command = self._receive_class_task
+        self._expect_class_task = True
 
     def check_tasks(self):
         """Показывает меню для проверки поступивших решений."""
@@ -54,19 +54,11 @@ class Teacher(Registered):
     def check_individual_tasks(self):
         """Запрашивает решение ученика для проверки AI (индивидуально)."""
         self.out("Загрузите решение ученика текстом. Я помогу проверить.", keyboards.Teacher.main)
-        self._current_command = self._ai_check_individual_solution
+        self._expect_ai_check_individual = True
 
-    def ai_generate_task(self):
-        self._ai_mode = AIMode.GENERATE_TASK
-        self.out("Укажите тему и уровень (например: Квадратные уравнения, базовый) — сгенерирую ОДНО задание без решения", keyboards.Teacher.main)
-        self._current_command = self._ai_generate_and_send
 
     class SearchClass(core.Process):
-        """Многошаговый процесс поиска класса (город → школа → класс → поиск).
-
-        Наследует `core.Process` и использует цепочку ask/verify шагов с
-        автоматическим переходом к следующему вопросу.
-        """
+        """Многошаговый процесс поиска класса (город, школа, класс, затем поиск)."""
         def __init__(self, ID, owner: "Teacher"):
             super().__init__(ID, cancelable=True)
             self.owner = owner
@@ -141,8 +133,7 @@ class Teacher(Registered):
         """Запускает многошаговый процесс поиска класса."""
         try:
             self.class_search_process = self.SearchClass(self._ID, self)
-            self._current_command = self._cancelable_execute_search_class
-            self._current_command()
+            self._cancelable_execute_search_class()
         except Exception:
             pass
 
@@ -156,7 +147,7 @@ class Teacher(Registered):
             self.class_search_process.execute()
             if not getattr(self.class_search_process, "_is_active", False):
                 self.class_search_process = None
-                self._current_command = None
+                
         except Exception:
             return False
 
@@ -176,22 +167,20 @@ class Teacher(Registered):
         condition = and_(
             Tables.Users.city == city,
             Tables.Users.school == school,
-            Tables.Users.student_class == class_number,
+            Tables.Users.grade == class_number,
         )
         search = Manager.search_records(Tables.Users, condition)
         if search:
-            studentIDS = []
+            student_ids = []
             out = ""
             for student in search:
-                ID = student["telegram_id"]
-                name = student["name"]
-                surname = student["surname"]
-                out += f"{name} {surname}\n"
-                studentIDS.append(ID)
+                student = core.UserRecognizer(student["telegram_id"])
+                out += f"{student.name} {student.surname}\n"
+                student_ids.append(student.get_ID())
 
             self.out(out, keyboards.Teacher.attached)
-            self.searchClass = studentIDS
-            return studentIDS
+            self.searchClass = student_ids
+            return student_ids
         else:
             self.out("ничего не найдено")
 
@@ -209,7 +198,6 @@ class Teacher(Registered):
         self.out("Заявка отправлена", keyboards.Teacher.main)
         return True
 
-    # ===== Teacher task reception helpers =====
     def _receive_individual_task(self):
         """Принимает текст индивидуального задания от учителя."""
         try:
@@ -218,9 +206,9 @@ class Teacher(Registered):
                 return False
             # Здесь можно сохранить в БД; пока отправим подтверждение
             self.out("Индивидуальное задание сформировано и сохранено", keyboards.Teacher.main)
-            self._current_command = None
+            self._expect_individual_task = False
         except Exception:
-            self._current_command = None
+            self._expect_individual_task = False
             return False
 
     def _receive_class_task(self):
@@ -230,12 +218,11 @@ class Teacher(Registered):
             if not text:
                 return False
             self.out("Задание для класса сформировано и сохранено", keyboards.Teacher.main)
-            self._current_command = None
+            self._expect_class_task = False
         except Exception:
-            self._current_command = None
+            self._expect_class_task = False
             return False
 
-    # ===== AI helpers for teacher =====
     @core.cancelable
     def _ai_check_individual_solution(self):
         """Проверяет решение одного ученика с помощью AI и даёт рекомендации."""
@@ -249,46 +236,11 @@ class Teacher(Registered):
             )
             answer = self.llm.ask(prompt)
             self.out(answer, keyboards.Teacher.main)
-            self._current_command = None
+            self._expect_ai_check_individual = False
         except Exception:
-            self._current_command = None
+            self._expect_ai_check_individual = False
             return False
 
-    @core.cancelable
-    def _ai_check_class_solutions(self):
-        """Анализирует набор решений класса: типичные ошибки и рекомендации."""
-        try:
-            text = getattr(self, "_current_request", "").strip()
-            if not text:
-                return False
-            prompt = (
-                "Суммируй типичные ошибки в работах класса и предложи рекомендации по теме. "
-                "Дай список частых ошибок и план их устранения. Текст: " + text
-            )
-            answer = self.llm.ask(prompt)
-            self.out(answer, keyboards.Teacher.main)
-            self._current_command = None
-        except Exception:
-            self._current_command = None
-            return False
-
-    @core.cancelable
-    def _ai_generate_and_send(self):
-        """Генерирует ОДНУ задачу по теме/уровню и отправляет учителю."""
-        try:
-            text = getattr(self, "_current_request", "").strip()
-            if not text:
-                return False
-            prompt = (
-                "Сгенерируй ОДНУ математическую задачу по указанной теме и уровню. Только условие, без решения и ответа. "
-                "Формат: 'Задача: ...'. В случае неоднозначности задай 1 уточняющий вопрос в конце. Тема: " + text
-            )
-            answer = self.llm.ask(prompt)
-            self.out(answer, keyboards.Teacher.main)
-            self._current_command = None
-        except Exception:
-            self._current_command = None
-            return False
 
     @core.log
     def show_my_students(self):
@@ -305,5 +257,4 @@ class Teacher(Registered):
             out += f"• {me.name} {me.surname} (школа №{me.school}, {me.grade} класс)\n"
 
         self.out(out, keyboards.Teacher.main)
-
 

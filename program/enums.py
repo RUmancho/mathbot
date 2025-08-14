@@ -57,4 +57,3 @@ class TeacherCommands(Enum):
     ANALYZE_PROGRESS = "анализ прогресса"
     ATTACH_ALL = "прикрепить всех"
 
-

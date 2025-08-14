@@ -1,7 +1,5 @@
-import colorama
 import json
 import os
-colorama.init()
 
 def get_values_from_json(json_data):
     """Функция для получения всех значений из JSON-данных"""
@@ -32,16 +30,11 @@ try:
     with open(path_to_try, "r", encoding="utf-8") as file:
         resource = json.load(file)
 except FileNotFoundError:
-    print(colorama.Fore.RED + "Ошибка: не найден файл ресурсов. Ожидались пути:")
-    print(colorama.Fore.RED + f" - {RESOURCE_JSON_PATH_PRIMARY}")
-    print(colorama.Fore.RED + f" - {RESOURCE_JSON_PATH_FALLBACK}")
     raise
 except json.JSONDecodeError as e:
-    print(colorama.Fore.RED + f"Ошибка чтения JSON в {json_path_used}: {e}")
     raise
 
 if resource == {}:
-    print(colorama.Fore.RED + "Ошибка: файл resourse.json пуст")
     exit()
 
 
@@ -57,9 +50,7 @@ for path in relatives_paths:
         if path == database_rel_path:
             # Database file will be created automatically; skip error
             continue
-        print(f"{colorama.Fore.RED}File path not found: {resolved}")
         error = True
-print(colorama.Fore.WHITE)
 
 if error:
     raise FileNotFoundError

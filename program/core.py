@@ -417,7 +417,7 @@ def cancelable(function: callable):
     return wrapper
 
 def log(function: callable):
-    """Декоратор логирования вызовов функций с цветным выводом."""
+    """Декоратор логирования вызовов функций"""
     def wrapper(*args):
         print(f"{colorama.Fore.GREEN}-------------------------------------------------------------")
         try:

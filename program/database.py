@@ -17,10 +17,6 @@ class Tables:
         task_file = Column(BLOB)           # файл задания
         solution_filename = Column(String) # имя файла решения
         solution_file = Column(BLOB)       # файл решения
-        due_date = Column(String)          # срок выполнения задания (человекочитаемо, опционально)
-        due_at = Column(Integer)           # дедлайн в UTC epoch seconds (рекомендуемый источник истины)
-        created_at = Column(Integer)       # время создания (UTC epoch seconds)
-        updated_at = Column(Integer)       # время обновления (UTC epoch seconds)
 
     class Users(Base):
         """Таблица зарегестрированных пользователей"""
@@ -43,26 +39,6 @@ relatative_path_database = f"../{resource.resource['database']}"
 engine = create_engine(f"sqlite:///{relatative_path_database}")
 Base.metadata.create_all(engine)
 
-def _ensure_columns(table_name: str, columns: dict[str, str]):
-    try:
-        with engine.connect() as conn:
-            result = conn.execute(text(f"PRAGMA table_info({table_name})"))
-            existing = {row[1] for row in result}
-            for col_name, col_type in columns.items():
-                if col_name not in existing:
-                    try:
-                        conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type}"))
-                    except Exception:
-                        pass
-    except Exception:
-        pass
-
-_ensure_columns('singly_assigment', {
-    'due_date': 'TEXT',
-    'due_at': 'INTEGER',
-    'created_at': 'INTEGER',
-    'updated_at': 'INTEGER',
-})
 
 class Manager:
     session = sessionmaker(bind=engine)

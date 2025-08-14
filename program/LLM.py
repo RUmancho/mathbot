@@ -17,7 +17,6 @@ class ResponseType(Enum):
     EXPLANATION = auto()  # Развернутое объяснение
     CONCISE = auto()      # Краткий ответ
 
-
 class LLM:
     """Клиент локальной LLM (Ollama) с ролью учителя математики.
 
@@ -103,27 +102,14 @@ class LLM:
         return expr
 
     def request(self) -> str:
-        """Отправляет промпт в модель и возвращает ответ.
+        """Отправляет промпт в модель и возвращает ответ."""
 
-        При сетевой ошибке возвращает понятное уведомление вместо исключения.
-        """
-        if self.model is None:
-            return (
-                "AI недоступен: не удалось установить соединение с локальной LLM. "
-                "Проверьте, запущен ли Ollama (ollama serve) и доступна ли модель."
-            )
-        try:
-            response_text = self.model.invoke(self.prompt)
-        except Exception as e:
-            print(f"Ошибка запроса к LLM: {e}")
-            return (
-                "AI недоступен: ошибка подключения к LLM. "
-                "Убедитесь, что Ollama запущен и доступен."
-            )
+        response_text = self.model.invoke(self.prompt)
         
         # Для расчетов извлекаем только число
         if self.response_type == ResponseType.CALCULATION:
             return self._extract_number(response_text)
+            
         return response_text
 
     def _extract_number(self, text: str) -> str:
@@ -132,3 +118,7 @@ class LLM:
         return matches[0] if matches else "Could not extract number"
 
 phi_llm = LLM()
+phi_llm.set_role("math teacher")
+phi_llm.set_response_type(ResponseType.EXPLANATION)
+phi_llm.explain("What is the square root of 16?")
+print(phi_llm.request())

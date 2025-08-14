@@ -1,11 +1,6 @@
-"""Базовая инфраструктура: процессы, отправка файлов, валидации, утилиты."""
-
 from database import *
-import colorama
-import telebot
 import config
 import os
-colorama.init()
 
 class UserInputError(Exception):
     """Исключение при некорректно введённых данных."""
@@ -143,10 +138,7 @@ class FileSender:
 
     @classmethod
     def set_bot(cls, bot_instance):
-        try:
-            cls.bot = bot_instance
-        except Exception as e:
-            print(f"Не удалось установить экземпляр бота для FileSender: {e}")
+        cls.bot = bot_instance
 
     def push(self):
         sent = 0
@@ -226,8 +218,6 @@ class FileSender:
             print(f"Ошибка отправки текстового файла '{path}': {e}")
 
 
-## Удалён класс Sender — ввод реализуется через core.Process
-
 
 class Validator:
     """Статические валидаторы пользовательского ввода (русский язык)."""
@@ -303,40 +293,23 @@ def is_cancel(self) -> bool:
     except Exception:
         return False
 
-def log(function: callable):
-    """Декоратор логирования вызовов функций"""
-    def wrapper(*args):
-        print(f"{colorama.Fore.GREEN}-------------------------------------------------------------")
-        try:
-            print(f"call      {function.__name__} ...")
-            function(*args)
-            print(f"success   {function.__name__}")
-        except Exception as e:
-            print(f"{colorama.Fore.RED}error   {function.__name__}: {e}")
-        print(f"{colorama.Fore.GREEN}-------------------------------------------------------------\n\n")
-            
-    return wrapper
 
 def extractor(collection: list[dict], key) -> list:
-    """Извлекает значения `key` из списка словарей."""
-    try:
-        extractValues = []
+    """Извлекает значения "key" из списка словарей."""
+    extracted = []
 
-        for dictonary in collection:
-            find = dictonary.get(key)
-            extractValues.append(find)
-        
-        return extractValues
-    except Exception as e:
-        print(f"Ошибка в extractor: {e}")
-        return []
+    for dictonary in collection:
+        find = dictonary.get(key)
+        extracted.append(find)
+    
+    return extracted
 
 def file_extension(path: str) -> str:
     """Определяет расширение файла."""
     return path.split(".")[-1]
 
 def transform_request(request: str):
-    """Нормализует: нижний регистр и замена "ё" на "е"."""
+    """Преобразование строки в нижний регистр и замена "ё" на "е"."""
     request = request.lower().strip()
     if "ё" in request:
         request = request.replace("ё", "е")

@@ -1,17 +1,12 @@
-"""Логика незарегистрированного пользователя (гостя)."""
-
 from database import Manager, Tables
 import config
 import keyboards
 import core
-from core import cancelable
 from base import User
 
 
-class Unregistered(User):
-    START_MESSAGE = (
-        "Здравствуйте, этот бот даст теорию по математике, для его полного использования нужно зарегестрироваться"
-    )
+class Guest(User):
+    START_MESSAGE = "Здравствуйте, этот бот даст теорию по математике, для его полного использования нужно зарегестрироваться"
 
     def __init__(self, myID: str = "", bind_bot=None):
         super().__init__(myID, bind_bot)
@@ -196,11 +191,11 @@ class Unregistered(User):
             pass
 
 
-    @cancelable
     def _cancelable_registration_execute(self):
         try:
             if not self.reg_process:
                 return False
+            # процесс сам обработает отмену в update_last_request (core.Process)
             self.reg_process.update_last_request(self._current_request)
             self.reg_process.execute()
             if not getattr(self.reg_process, "_is_active", False):

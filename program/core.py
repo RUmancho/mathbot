@@ -47,13 +47,21 @@ class Process:
         self._cancelable = cancelable
 
         self._current_request = ""
+        self._canceled = False
 
     def update_last_request(self, request):
         self._current_request = request
 
         if self._cancelable:
             if self._current_request == self.CANCEL_KEYWORD:
+                # помечаем как отменённый, останавливаем и уведомляем пользователя
+                self._canceled = True
                 self.stop()
+                try:
+                    if self._bot and self._me:
+                        self._bot.send_message(self._me.get_ID(), "Действие отменено")
+                except Exception:
+                    pass
 
     def stop(self):
         self._i = 0
@@ -61,6 +69,10 @@ class Process:
 
     def execute(self):
         try:
+            # если предыдущий ввод был отменой — ничего не делать
+            if getattr(self, "_canceled", False):
+                self._canceled = False
+                return
             # помечаем процесс как активный на время выполнения шага
             self._is_active = True
             # Выполняем текущий шаг
@@ -91,14 +103,10 @@ class Process:
 
     @classmethod
     def set_bot(cls, bot_instance):
-        try:
-            cls._bot = bot_instance
-        except Exception as e:
-            print(f"Не удалось установить экземпляр бота для Process: {e}")
+        cls._bot = bot_instance
 
 
 class FileSender:
-    """Утилита отправки изображений, документов, аудио, видео и текстов."""
     IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp"]
     DOCUMENT_EXTENSIONS = ["doc", "docx", "pdf", "xlsx", "xls", "ppt", "pptx", "txt"]
     AUDIO_EXTENSIONS = ["mp3", "wav", "ogg", "m4a", "aac", "flac"]
@@ -287,128 +295,13 @@ class Validator:
             return False
 
 
-class FuncChain:
-    """Последовательность функций, исполняемых при успешности шагов."""
-    def __init__(self, *args):
-        try:
-            self.logic = args
-            self.null()
-        except Exception as e:
-            print(f"Ошибка при инициализации FuncChain: {e}")
-
-    def next(self):
-        """Вызывает текущий шаг; при успехе продвигает индекс."""
-        try:
-            if self.i == len(self.logic):
-                self.isActive = False
-                self.completion = True
-
-            if self.isActive:
-                success = self.logic[self.i]()
-
-                if success:
-                    self.i += 1
-        except Exception as e:
-            print(f"Ошибка в next FuncChain: {e}")
-            
-    def activate(self):
-        """Активирует последовательность с нулевого шага."""
-        try:
-            self.null()
-            self.isActive = True
-        except Exception as e:
-            print(f"Ошибка при активации FuncChain: {e}")
-
-    def null(self):
-        """Сбрасывает состояние последовательности."""
-        try:
-            self.completion = False
-            self.isActive = False
-            self.i = 0
-        except Exception as e:
-            print(f"Ошибка при сбросе FuncChain: {e}")
-
-class Button:
-    """Обёртка над FuncChain для запуска сценариев по кнопке UI."""
-    def __init__(self, *args: callable):
-        try:
-            self.subsequence = FuncChain(*args)
-        except Exception as e:
-            print(f"Ошибка при создании Button: {e}")
-    
-    def exe(self):
-        """Запускает/продолжает выполнение последовательности кнопки."""
-        try:
-            if not self.subsequence.isActive:
-                self.subsequence.activate()
-
-            self.subsequence.next()
-        except Exception as e:
-            print(f"Ошибка при выполнении Button: {e}")
-
-def cancelable(function: callable):
-    """Декоратор, позволяющий отменить текущее действие словом «отмена».
-
-    Поведение:
-    - Если последний ввод пользователя равен ключевому слову отмены
-      (`Process.CANCEL_KEYWORD` → «отмена»), декоратор корректно завершает
-      активные процессы на базе `core.Process` (регистрация, удаление профиля,
-      поиск класса) и очищает `_current_command`.
-    - Пользователю отправляется уведомление «Действие отменено».
-    """
-
-    def wrapper(self, *args, **kwargs):
-        try:
-            last_request = getattr(self, "_current_request", None)
-            cancel_word = getattr(Process, "CANCEL_KEYWORD", "отмена")
-            if isinstance(last_request, str) and last_request == cancel_word:
-                # Пользователь инициировал отмену
-                # Специальный хук отмены, если реализован
-                if hasattr(self, "cancel_current_action") and callable(self.cancel_current_action):
-                    try:
-                        self.cancel_current_action()
-                    except Exception:
-                        pass
-
-                # Попытка отменить типовые процессы на базе Process
-                delete_proc = getattr(self, "delete_profile_process", None)
-                if isinstance(delete_proc, Process):
-                    try:
-                        delete_proc.stop()
-                    except Exception:
-                        pass
-                # Поиск класса как Process
-                class_proc = getattr(self, "class_search_process", None)
-                if isinstance(class_proc, Process):
-                    try:
-                        class_proc.stop()
-                    except Exception:
-                        pass
-
-                # Очистка отложенной команды
-                if hasattr(self, "_current_command"):
-                    try:
-                        self._current_command = None
-                    except Exception:
-                        pass
-
-                # Уведомление пользователя
-                try:
-                    bot = getattr(self, "_telegramBot", None)
-                    chat_id = getattr(self, "_ID", None)
-                    if bot and chat_id:
-                        bot.send_message(chat_id, "Действие отменено")
-                except Exception:
-                    pass
-                return True
-
-            # Нет команды отмены — выполняем оригинальную функцию
-            return function(self, *args, **kwargs)
-        except Exception:
-            # В случае ошибки не блокируем дальнейшее выполнение
-            return function(self, *args, **kwargs)
-
-    return wrapper
+def is_cancel(self) -> bool:
+    """Простой хелпер отмены: возвращает True, если введено слово отмены."""
+    try:
+        last_request = getattr(self, "_current_request", None)
+        return isinstance(last_request, str) and last_request == Process.CANCEL_KEYWORD
+    except Exception:
+        return False
 
 def log(function: callable):
     """Декоратор логирования вызовов функций"""

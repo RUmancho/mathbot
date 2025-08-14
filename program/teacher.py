@@ -1,9 +1,3 @@
-"""Логика пользователя с ролью Учитель.
-
-Управляет прикреплением классов и учеников, выдачей и проверкой заданий,
-а также AI‑ассистентом для анализа решений и генерации заданий.
-"""
-
 from sqlalchemy import and_
 from database import Manager, Tables
 import keyboards
@@ -14,49 +8,6 @@ from enums import AIMode
 
 
 class Teacher(Registered):
-    def __init__(self, myID: str = "", bind_bot=None):
-        super().__init__(myID, bind_bot)
-        self.searchClass = []
-        self.ref = None
-        self.llm = LLM()
-        self.llm.set_role("math teacher")
-
-        self.ai_process = None
-        self._ai_mode: AIMode | None = None
-        self.class_search_process = None
-
-    def show_main_menu(self):
-        """Показывает главное меню учителя."""
-        self.out("главная", keyboards.Teacher.main)
-
-    def show_profile_actions(self):
-        """Показывает действия профиля учителя."""
-        self.out("Выберите действие", keyboards.Teacher.profile)
-
-    def assign_homework(self):
-        """Показывает меню для задания домашней работы (выбор типа)."""
-        self.out("Выберите тип задания", keyboards.Teacher.homework)
-
-    def assign_individual_task(self):
-        """Запрашивает текст индивидуального задания для конкретного ученика."""
-        self.out("Пришлите текст индивидуального задания для ученика", keyboards.Teacher.main)
-        self._expect_individual_task = True
-
-    def assign_class_task(self):
-        """Запрашивает текст задания для класса (будет отправлено всем ученикам)."""
-        self.out("Пришлите текст задания для класса", keyboards.Teacher.main)
-        self._expect_class_task = True
-
-    def check_tasks(self):
-        """Показывает меню для проверки поступивших решений."""
-        self.out("Выберите тип заданий для проверки", keyboards.Teacher.check_task)
-
-    def check_individual_tasks(self):
-        """Запрашивает решение ученика для проверки AI (индивидуально)."""
-        self.out("Загрузите решение ученика текстом. Я помогу проверить.", keyboards.Teacher.main)
-        self._expect_ai_check_individual = True
-
-
     class SearchClass(core.Process):
         """Многошаговый процесс поиска класса (город, школа, класс, затем поиск)."""
         def __init__(self, ID, owner: "Teacher"):
@@ -137,19 +88,63 @@ class Teacher(Registered):
         except Exception:
             pass
 
-    @core.cancelable
     def _cancelable_execute_search_class(self):
         """Обёртка исполнения процесса поиска с поддержкой отмены."""
         try:
             if not self.class_search_process:
                 return False
+            # отмена обрабатывается внутри Process.update_last_request
             self.class_search_process.update_last_request(self._current_request)
             self.class_search_process.execute()
             if not getattr(self.class_search_process, "_is_active", False):
                 self.class_search_process = None
-                
+            
         except Exception:
             return False
+            
+    def __init__(self, myID: str = "", bind_bot=None):
+        super().__init__(myID, bind_bot)
+        self.searchClass = []
+        self.ref = None
+        self.llm = LLM()
+        self.llm.set_role("math teacher")
+
+        self.ai_process = None
+        self._ai_mode: AIMode | None = None
+        self.class_search_process = None
+
+    def show_main_menu(self):
+        """Показывает главное меню учителя."""
+        self.out("главная", keyboards.Teacher.main)
+
+    def show_profile_actions(self):
+        """Показывает действия профиля учителя."""
+        self.out("Выберите действие", keyboards.Teacher.profile)
+
+    def assign_homework(self):
+        """Показывает меню для задания домашней работы (выбор типа)."""
+        self.out("Выберите тип задания", keyboards.Teacher.homework)
+
+    def assign_individual_task(self):
+        """Запрашивает текст индивидуального задания для конкретного ученика."""
+        self.out("Пришлите текст индивидуального задания для ученика", keyboards.Teacher.main)
+        self._expect_individual_task = True
+
+    def assign_class_task(self):
+        """Запрашивает текст задания для класса (будет отправлено всем ученикам)."""
+        self.out("Пришлите текст задания для класса", keyboards.Teacher.main)
+        self._expect_class_task = True
+
+    def check_tasks(self):
+        """Показывает меню для проверки поступивших решений."""
+        self.out("Выберите тип заданий для проверки", keyboards.Teacher.check_task)
+
+    def check_individual_tasks(self):
+        """Запрашивает решение ученика для проверки AI (индивидуально)."""
+        self.out("Загрузите решение ученика текстом. Я помогу проверить.", keyboards.Teacher.main)
+        self._expect_ai_check_individual = True
+
+
 
     @core.log
     def __search_class(self, dataFilter: dict):
@@ -223,7 +218,6 @@ class Teacher(Registered):
             self._expect_class_task = False
             return False
 
-    @core.cancelable
     def _ai_check_individual_solution(self):
         """Проверяет решение одного ученика с помощью AI и даёт рекомендации."""
         try:

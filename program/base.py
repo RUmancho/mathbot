@@ -186,10 +186,10 @@ class Registered(User):
     def _noop(*_, **__):
         return None
 
-    @core.cancelable
     def _cancelable_delete(self):
         """Шаг удаления профиля: выполняет процесс и корректно завершает его."""
         try:
+            # отмена обрабатывается внутри Process.update_last_request
             self.delete_profile_process.update_last_request(self._current_request)
             self.delete_profile_process.execute()
             if not getattr(self.delete_profile_process, "_is_active", False):

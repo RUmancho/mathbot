@@ -1,9 +1,3 @@
-"""Логика пользователя с ролью Ученик.
-
-Отвечает за взаимодействия в меню ученика, работу AI‑помощника для
-объяснений, практики, проверки решений, а также генерацию задания.
-"""
-
 from database import Manager, Tables
 import keyboards
 from LLM import LLM
@@ -23,13 +17,6 @@ class Student(Registered):
     def show_main_menu(self):
         """Показывает главное меню ученика."""
         self.out("главная", keyboards.Student.main)
-
-    def recognize_user(self):
-        """Загружает профиль ученика (город, школа, класс)."""
-        super().recognize_user()
-        self.city = self._reader_my_data("city")
-        self.school = self._reader_my_data("school")
-        self.grade = self._reader_my_data("student_class")
 
     def show_applications(self):
         """Выводит список входящих заявок от учителей."""
@@ -107,7 +94,6 @@ class Student(Registered):
         self._ai_mode = AIMode.GENERATE_TASK
         self.out("Укажите тему, по которой сгенерировать одно задание (без решения)")
 
-    @core.cancelable
     def _ai_receive_and_answer(self):
         """Получает ввод пользователя, отправляет промпт LLM и возвращает ответ.
 

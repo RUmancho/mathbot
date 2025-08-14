@@ -14,7 +14,7 @@ from theory import handler as theory
 from base import User as AggregatedUser, find_my_role
 from student import Student
 from teacher import Teacher
-from unregistered import Unregistered
+from unregistered import Guest
 
 # Простой реестр агрегированных пользователей по chat_id
 _AGGREGATED_USERS: dict[str, AggregatedUser] = {}
@@ -140,7 +140,7 @@ def handle_teacher_commands(request: str, user: Teacher):
         user.unsupported_command_warning()
 
 
-def handle_unregistered_commands(request: str, user: Unregistered):
+def handle_unregistered_commands(request: str, user: Guest):
     """Обрабатывает команды гостя (незарегистрированного пользователя)."""
     is_response = theory(request, user.out, user.get_ID())
     if is_response:
@@ -184,14 +184,14 @@ def route_message(msg, aggregated_user: AggregatedUser) -> None:
     elif role == "учитель":
         active = aggregated_user.set_role(Teacher, ID)
     else:
-        active = aggregated_user.set_role(Unregistered, ID)
+        active = aggregated_user.set_role(Guest, ID)
 
     # Обновляем ввод для корректной работы процессов
     aggregated_user.update_last_request(request)
 
     # Обработка активных процессов и режимов БЕЗ _current_command
     # Unregistered: регистрация
-    if isinstance(active, Unregistered):
+    if isinstance(active, Guest):
         reg_proc = getattr(active, "reg_process", None)
         if reg_proc is not None and getattr(reg_proc, "_is_active", True) is not False:
             try:

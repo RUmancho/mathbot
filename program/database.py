@@ -11,6 +11,7 @@ class Tables:
         """Таблица заданий и решений"""
         __tablename__ = 'singly_assigment'
 
+        id = Column(Integer, primary_key=True, autoincrement=True)  # первичный ключ
         sender_id = Column(String)         # telegram_id отправителя задания
         recipient_id = Column(String)      # telegram_id получателя задания
         task_filename = Column(String)     # имя файла задания
@@ -22,7 +23,7 @@ class Tables:
         """Таблица зарегестрированных пользователей"""
         __tablename__ = "users"
 
-        telegram_id = Column(String, nullable=False, unique=True)  # telegram_id пользователя
+        telegram_id = Column(String, primary_key=True)  # первичный ключ — telegram_id пользователя
         username = Column(String, nullable=True, unique=True)      # @username пользователя
         password = Column(String(PASSWORD_LENGTH), nullable=False) # пароль пользователя
         name = Column(String, nullable=False)                      # имя пользователя

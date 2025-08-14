@@ -6,13 +6,28 @@ from student import Student
 from teacher import Teacher
 from unregistered import Guest
 
+AGGREGATED_USERS: dict[str, AggregatedUser] = {}
+
+def get_or_create_user(bot, chat_id: str) -> AggregatedUser:
+    try:
+        user = AGGREGATED_USERS.get(chat_id)
+        if user is None:
+            user = AggregatedUser(chat_id, bot)
+            AGGREGATED_USERS[chat_id] = user
+        else:
+            user._telegramBot = bot
+        return user
+    except Exception as e:
+        print(f"Не удалось получить/создать агрегированного пользователя: {e}")
+        return AggregatedUser(chat_id, bot)
+
 
 def handle_student_commands(request: str, user: Student):
     is_response = theory(request, user.out, user.get_ID())
     if is_response:
         return
 
-    if request in user.SHOW_MAIN_MENU:
+    if request in user.RUN_BOT_COMMADS or request in user.SHOW_MAIN_MENU:
         user.show_main_menu()
     elif request == "профиль":
         user.show_profile_actions()
@@ -45,7 +60,7 @@ def handle_teacher_commands(request: str, user: Teacher):
     if is_response:
         return
 
-    if request in user.SHOW_MAIN_MENU:
+    if request in user.RUN_BOT_COMMADS or request in user.SHOW_MAIN_MENU:
         user.show_main_menu()
     elif request == "профиль":
         user.show_profile_actions()
@@ -89,13 +104,13 @@ def handle_unregistered_commands(request: str, user: Guest):
         return
 
     if request in user.RUN_BOT_COMMADS:
-        user.current_command = user.getting_started
+        user.getting_started()
     elif request in user.SHOW_MAIN_MENU:
-        user.current_command = user.show_main_menu
+        user.show_main_menu()
     elif request == "зарегестрироваться как учитель":
-        user.current_command = user.teacher_registration
+        user.teacher_registration()
     elif request == "зарегестрироваться как ученик":
-        user.current_command = user.student_registration
+        user.student_registration()
     else:
         user.unsupported_command_warning()
 
@@ -123,4 +138,10 @@ def route_message(msg, aggregated_user: AggregatedUser) -> None:
         return
 
     handler(request, active)
+
+    # Выполнить отложенную команду роли (если она была установлена внутри обработчика)
+    try:
+        aggregated_user.command_executor()
+    except Exception as e:
+        print(f"Ошибка выполнения отложенной команды: {e}")
 

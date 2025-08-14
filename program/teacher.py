@@ -5,6 +5,7 @@ import core
 from LLM import LLM
 from base import Registered
 from enums import AIMode
+import logger
 
 
 class Teacher(Registered):
@@ -146,7 +147,7 @@ class Teacher(Registered):
 
 
 
-    @core.log
+    @logger.log
     def __search_class(self, dataFilter: dict):
         """Ищет учеников по фильтру (город, школа, класс) и печатает найденных."""
         self.searchClass = []
@@ -179,7 +180,7 @@ class Teacher(Registered):
         else:
             self.out("ничего не найдено")
 
-    @core.log
+    @logger.log
     def send_application(self):
         """Отправляет заявки всем найденным ученикам на прикрепление к учителю."""
         for ID in self.searchClass:
@@ -235,8 +236,31 @@ class Teacher(Registered):
             self._expect_ai_check_individual = False
             return False
 
+    # Универсальные хуки маршрутизатора
+    def has_active_process(self) -> bool:
+        try:
+            if getattr(self, "class_search_process", None) and getattr(self.class_search_process, "_is_active", False):
+                return True
+        except Exception:
+            pass
+        return bool(getattr(self, "_expect_individual_task", False) or getattr(self, "_expect_class_task", False) or getattr(self, "_expect_ai_check_individual", False))
 
-    @core.log
+    def handle_active_process(self) -> bool:
+        try:
+            if getattr(self, "class_search_process", None) and getattr(self.class_search_process, "_is_active", False):
+                return bool(self._cancelable_execute_search_class())
+            if getattr(self, "_expect_individual_task", False):
+                return bool(self._receive_individual_task())
+            if getattr(self, "_expect_class_task", False):
+                return bool(self._receive_class_task())
+            if getattr(self, "_expect_ai_check_individual", False):
+                return bool(self._ai_check_individual_solution())
+            return False
+        except Exception:
+            return False
+
+
+    @logger.log
     def show_my_students(self):
         """Выводит список прикреплённых к учителю учеников с данными."""
         attached_students = self._reader_my_data("attached_students")

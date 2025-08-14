@@ -33,15 +33,15 @@ class User:
     def set_role(self, user_class, ID: str):
         """Назначает активную роль пользователя и возвращает её инстанс.
 
-        Создаёт новый экземпляр, если роли различаются или изменился ID,
-        иначе — переиспользует текущий, обновляя ссылку на бота.
+        Создаёт новый экземпляр, если тип роли изменился или инстанса нет,
+        иначе переиспользует текущий, обновляя ссылку на бота и ID.
         """
-        needs_new_instance = (
+        needs_new = (
             self.instance is None
             or not isinstance(self.instance, user_class)
             or self.instance.get_ID() != ID
         )
-        if needs_new_instance:
+        if needs_new:
             self.instance = user_class(ID, self._telegramBot)
             self._role_changed = True
         else:
@@ -71,6 +71,15 @@ class User:
     def unsupported_command_warning(self):
         """Сообщение о неизвестной команде пользователю."""
         self.out("Неизвестная команда")
+
+    # Унифицированные хуки для активных процессов/режимов
+    def has_active_process(self) -> bool:
+        """Есть ли у роли активный многошаговый процесс/режим?"""
+        return False
+
+    def handle_active_process(self) -> bool:
+        """Продолжает активный процесс/режим. Возвращает True, если обработал."""
+        return False
 
     def update_last_request(self, request: str):
         """Синхронизирует последний ввод как на агрегаторе, так и на роли."""
@@ -199,6 +208,19 @@ class Registered(User):
                 except Exception:
                     pass
             return True
+        except Exception:
+            return False
+
+    # Реализация универсальных хуков для зарегистрированных ролей
+    def has_active_process(self) -> bool:
+        try:
+            return bool(getattr(self.delete_profile_process, "_is_active", False))
+        except Exception:
+            return False
+
+    def handle_active_process(self) -> bool:
+        try:
+            return bool(self._cancelable_delete())
         except Exception:
             return False
 

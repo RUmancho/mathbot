@@ -108,4 +108,14 @@ class Student(Registered):
         # Завершаем режим
         self._ai_mode = None
         
+    # Универсальные хуки маршрутизатора
+    def has_active_process(self) -> bool:
+        return self._ai_mode is not None
+
+    def handle_active_process(self) -> bool:
+        try:
+            self._ai_receive_and_answer()
+            return True
+        except Exception:
+            return False
             

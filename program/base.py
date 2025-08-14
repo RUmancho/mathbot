@@ -64,13 +64,13 @@ class User:
             raise TypeError("ID is not str")
         self._ID = ID
 
-    def text_out(self, text: str, markup=None):
-        """Утилита: отправка сообщения в чат текущему пользователю."""
+    def out(self, text: str, markup=None):
+        """Отправка текстового сообщения в чат текущему пользователю."""
         self._telegramBot.send_message(self._ID, text=text, reply_markup=markup)
 
     def unsupported_command_warning(self):
         """Сообщение о неизвестной команде пользователю."""
-        self.text_out("Неизвестная команда")
+        self.out("Неизвестная команда")
 
     def update_last_request(self, request: str):
         """Синхронизирует последний ввод как на агрегаторе, так и на роли."""
@@ -160,6 +160,11 @@ class Registered(User):
     def delete_account(self):
         """Запускает удаление профиля с поддержкой отмены (слово «отмена»)."""
         self._current_command = self._cancelable_delete
+        # Немедленно показать первый шаг (запрос пароля), чтобы пользователь видел, что процесс начался
+        try:
+            self._current_command()
+        except Exception:
+            pass
 
     @staticmethod
     def _noop(*_, **__):

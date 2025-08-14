@@ -52,7 +52,4 @@ def handler(request, text_out, chat_id):
         algebra_theory[request].push()
         return True
     
-    elif request == "геометрия":
-        text_out("пока недоступно")
-    
     return False

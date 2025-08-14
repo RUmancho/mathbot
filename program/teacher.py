@@ -29,86 +29,39 @@ class Teacher(Registered):
 
     def show_main_menu(self):
         """Показывает главное меню учителя."""
-        self._telegramBot.send_message(self._ID, "главная", reply_markup=keyboards.Teacher.main)
-        return True
+        self.out("главная", keyboards.Teacher.main)
 
     def show_profile_actions(self):
         """Показывает действия профиля учителя."""
-        self._telegramBot.send_message(self._ID, "Выберите действие", reply_markup=keyboards.Teacher.profile)
+        self.out("Выберите действие", keyboards.Teacher.profile)
 
     def assign_homework(self):
         """Показывает меню для задания домашней работы (выбор типа)."""
-        try:
-            self._telegramBot.send_message(self._ID, "Выберите тип задания", reply_markup=keyboards.Teacher.homework)
-            return True
-        except Exception as e:
-            print(f"Ошибка при показе меню заданий: {e}")
-            self._telegramBot.send_message(self._ID, "Произошла ошибка при открытии меню заданий")
-            return False
+        self.out("Выберите тип задания", keyboards.Teacher.homework)
 
     def assign_individual_task(self):
         """Запрашивает текст индивидуального задания для конкретного ученика."""
-        try:
-            self._telegramBot.send_message(self._ID, "Пришлите текст индивидуального задания для ученика", reply_markup=keyboards.Teacher.main)
-            self._current_command = self._receive_individual_task
-            return True
-        except Exception as e:
-            print(f"Ошибка при создании индивидуального задания: {e}")
-            self._telegramBot.send_message(self._ID, "Произошла ошибка при создании задания")
-            return False
+        self.out("Пришлите текст индивидуального задания для ученика", keyboards.Teacher.main)
+        self._current_command = self._receive_individual_task
 
     def assign_class_task(self):
         """Запрашивает текст задания для класса (будет отправлено всем ученикам)."""
-        try:
-            self._telegramBot.send_message(self._ID, "Пришлите текст задания для класса", reply_markup=keyboards.Teacher.main)
-            self._current_command = self._receive_class_task
-            return True
-        except Exception as e:
-            print(f"Ошибка при создании задания для класса: {e}")
-            self._telegramBot.send_message(self._ID, "Произошла ошибка при создании задания")
-            return False
+        self.out("Пришлите текст задания для класса", keyboards.Teacher.main)
+        self._current_command = self._receive_class_task
 
     def check_tasks(self):
         """Показывает меню для проверки поступивших решений."""
-        try:
-            self._telegramBot.send_message(self._ID, "Выберите тип заданий для проверки", reply_markup=keyboards.Teacher.check_task)
-            return True
-        except Exception as e:
-            print(f"Ошибка при показе меню проверки: {e}")
-            self._telegramBot.send_message(self._ID, "Произошла ошибка при открытии меню проверки")
-            return False
+        self.out("Выберите тип заданий для проверки", keyboards.Teacher.check_task)
 
     def check_individual_tasks(self):
         """Запрашивает решение ученика для проверки AI (индивидуально)."""
-        try:
-            self._telegramBot.send_message(self._ID, "Загрузите решение ученика текстом. Я помогу проверить.", reply_markup=keyboards.Teacher.main)
-            self._current_command = self._ai_check_individual_solution
-            return True
-        except Exception as e:
-            print(f"Ошибка при проверке индивидуальных заданий: {e}")
-            self._telegramBot.send_message(self._ID, "Произошла ошибка при проверке заданий")
-            return False
-
-    def check_class_tasks(self):
-        """Запрашивает набор решений класса для анализа типичных ошибок AI."""
-        try:
-            self._telegramBot.send_message(self._ID, "Пришлите текст решений учащихся одним сообщением для анализа.", reply_markup=keyboards.Teacher.main)
-            self._current_command = self._ai_check_class_solutions
-            return True
-        except Exception as e:
-            print(f"Ошибка при проверке заданий класса: {e}")
-            self._telegramBot.send_message(self._ID, "Произошла ошибка при проверке заданий")
-            return False
+        self.out("Загрузите решение ученика текстом. Я помогу проверить.", keyboards.Teacher.main)
+        self._current_command = self._ai_check_individual_solution
 
     def ai_generate_task(self):
-        try:
-            self._ai_mode = AIMode.GENERATE_TASK
-            self._telegramBot.send_message(self._ID, "Укажите тему и уровень (например: Квадратные уравнения, базовый) — сгенерирую ОДНО задание без решения", reply_markup=keyboards.Teacher.main)
-            self._current_command = self._ai_generate_and_send
-            return True
-        except Exception as e:
-            print(f"Ошибка запуска генерации задания учителем: {e}")
-            return False
+        self._ai_mode = AIMode.GENERATE_TASK
+        self.out("Укажите тему и уровень (например: Квадратные уравнения, базовый) — сгенерирую ОДНО задание без решения", keyboards.Teacher.main)
+        self._current_command = self._ai_generate_and_send
 
     class SearchClassProcess(core.Process):
         """Многошаговый процесс поиска класса (город → школа → класс → поиск).
@@ -192,9 +145,8 @@ class Teacher(Registered):
             self.class_search_process = self.SearchClassProcess(self._ID, self)
             self._current_command = self._cancelable_execute_search_class
             self._current_command()
-            return True
         except Exception:
-            return False
+            pass
 
     @core.cancelable
     def _cancelable_execute_search_class(self):
@@ -207,7 +159,6 @@ class Teacher(Registered):
             if not getattr(self.class_search_process, "_is_active", False):
                 self.class_search_process = None
                 self._current_command = None
-            return True
         except Exception:
             return False
 
@@ -240,11 +191,11 @@ class Teacher(Registered):
                 out += f"{name} {surname}\n"
                 studentIDS.append(ID)
 
-            self._telegramBot.send_message(self._ID, out, reply_markup=keyboards.Teacher.attached)
+            self.out(out, keyboards.Teacher.attached)
             self.searchClass = studentIDS
             return studentIDS
         else:
-            self._telegramBot.send_message(self._ID, text="ничего не найдено")
+            self.out("ничего не найдено")
 
     @core.log
     def send_application(self):
@@ -257,7 +208,7 @@ class Teacher(Registered):
                 ID,
                 f"учитель {self.name} {self.surname} хочет прикрепить вас к себе. Для подтверждения перейдите в заявки",
             )
-        self._telegramBot.send_message(self._ID, "Заявка отправлена", reply_markup=keyboards.Teacher.main)
+        self.out("Заявка отправлена", keyboards.Teacher.main)
         return True
 
     # ===== Teacher task reception helpers =====
@@ -268,9 +219,8 @@ class Teacher(Registered):
             if not text:
                 return False
             # Здесь можно сохранить в БД; пока отправим подтверждение
-            self._telegramBot.send_message(self._ID, "Индивидуальное задание сформировано и сохранено", reply_markup=keyboards.Teacher.main)
+            self.out("Индивидуальное задание сформировано и сохранено", keyboards.Teacher.main)
             self._current_command = None
-            return True
         except Exception:
             self._current_command = None
             return False
@@ -281,9 +231,8 @@ class Teacher(Registered):
             text = getattr(self, "_current_request", "").strip()
             if not text:
                 return False
-            self._telegramBot.send_message(self._ID, "Задание для класса сформировано и сохранено", reply_markup=keyboards.Teacher.main)
+            self.out("Задание для класса сформировано и сохранено", keyboards.Teacher.main)
             self._current_command = None
-            return True
         except Exception:
             self._current_command = None
             return False
@@ -301,9 +250,8 @@ class Teacher(Registered):
                 "Критерии: корректность, полнота, логика. Текст: " + text
             )
             answer = self.llm.ask(prompt)
-            self._telegramBot.send_message(self._ID, answer, reply_markup=keyboards.Teacher.main)
+            self.out(answer, keyboards.Teacher.main)
             self._current_command = None
-            return True
         except Exception:
             self._current_command = None
             return False
@@ -320,9 +268,8 @@ class Teacher(Registered):
                 "Дай список частых ошибок и план их устранения. Текст: " + text
             )
             answer = self.llm.ask(prompt)
-            self._telegramBot.send_message(self._ID, answer, reply_markup=keyboards.Teacher.main)
+            self.out(answer, keyboards.Teacher.main)
             self._current_command = None
-            return True
         except Exception:
             self._current_command = None
             return False
@@ -339,9 +286,8 @@ class Teacher(Registered):
                 "Формат: 'Задача: ...'. В случае неоднозначности задай 1 уточняющий вопрос в конце. Тема: " + text
             )
             answer = self.llm.ask(prompt)
-            self._telegramBot.send_message(self._ID, answer, reply_markup=keyboards.Teacher.main)
+            self.out(answer, keyboards.Teacher.main)
             self._current_command = None
-            return True
         except Exception:
             self._current_command = None
             return False
@@ -351,17 +297,15 @@ class Teacher(Registered):
         """Выводит список прикреплённых к учителю учеников с данными."""
         attached_students = self._reader_my_data("attached_students")
         if not attached_students:
-            self._telegramBot.send_message(self._ID, "У вас пока нет прикрепленных учеников", reply_markup=keyboards.Teacher.main)
+            self.out("У вас пока нет прикрепленных учеников", keyboards.Teacher.main)
             return
+
         student_ids = attached_students.split(";")[:-1]
         out = "Ваши ученики:\n\n"
         for student_id in student_ids:
-            name = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == student_id, "name")
-            surname = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == student_id, "surname")
-            school = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == student_id, "school")
-            student_class = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == student_id, "student_class")
-            out += f"• {name} {surname} (школа №{school}, {student_class} класс)\n"
-        self._telegramBot.send_message(self._ID, out, reply_markup=keyboards.Teacher.main)
-        return True
+            me = core.UserRecognizer(student_id)
+            out += f"• {me.name} {me.surname} (школа №{me.school}, {me.grade} класс)\n"
+
+        self.out(out, keyboards.Teacher.main)
 
 

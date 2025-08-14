@@ -49,7 +49,7 @@ def handle_student_commands(request: str, user: Student):
     Сначала проверяет запрос на соответствие теории и отдаёт материалы, иначе
     роутит по действиям меню ученика.
     """
-    is_response = theory(request, user.text_out, user.get_ID())
+    is_response = theory(request, user.out, user.get_ID())
     if is_response:
         return
 
@@ -91,7 +91,7 @@ def handle_teacher_commands(request: str, user: Teacher):
 
     Порядок: теория → меню учителя → AI‑режимы/проверки/назначение заданий.
     """
-    is_response = theory(request, user.text_out, user.get_ID())
+    is_response = theory(request, user.out, user.get_ID())
     if is_response:
         return
 
@@ -142,7 +142,7 @@ def handle_teacher_commands(request: str, user: Teacher):
 
 def handle_unregistered_commands(request: str, user: Unregistered):
     """Обрабатывает команды гостя (незарегистрированного пользователя)."""
-    is_response = theory(request, user.text_out, user.get_ID())
+    is_response = theory(request, user.out, user.get_ID())
     if is_response:
         return
 
@@ -169,7 +169,8 @@ def route_message(msg, aggregated_user: AggregatedUser) -> None:
     """Главная точка входа обработки сообщения.
 
     1) Нормализует текст; 2) Определяет роль; 3) Делегирует обработчику;
-    4) Обновляет ввод и выполняет отложенную команду, если есть.
+    4) Корректно исполняет отложенные команды, не запуская только что
+       назначенные обработчики немедленно.
     """
     request = core.transform_request(msg.text)
     ID = str(msg.chat.id)
@@ -185,7 +186,21 @@ def route_message(msg, aggregated_user: AggregatedUser) -> None:
     else:
         active = aggregated_user.set_role(Unregistered, ID)
 
-    # Маршрутизация команд согласно роли
+    # Фиксируем, была ли отложенная команда ДО текущего сообщения
+    try:
+        had_pending_before = aggregated_user.has_pending_command()
+    except Exception:
+        had_pending_before = False
+
+    # Обновляем ввод для корректной работы процессов
+    aggregated_user.update_last_request(request)
+
+    # Если уже была отложенная команда — исполняем её и не мешаемся обработчиками меню
+    if had_pending_before:
+        aggregated_user.command_executor()
+        return
+
+    # Иначе — обычная маршрутизация команд согласно роли
     if isinstance(active, Student):
         handle_student_commands(request, active)
     elif isinstance(active, Teacher):
@@ -193,7 +208,6 @@ def route_message(msg, aggregated_user: AggregatedUser) -> None:
     else:
         handle_unregistered_commands(request, active)
 
-    # Сначала обновляем ввод, затем выполняем команду — это важно для процессов, ожидающих ввод
-    aggregated_user.update_last_request(request)
-    aggregated_user.command_executor()
+    # ВАЖНО: не исполняем только что установленные _current_command сразу.
+    # Они будут исполнены на следующем сообщении пользователя.
 

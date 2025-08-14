@@ -23,7 +23,7 @@ class UserRecognizer:
         if self.role == "ученик":
             self.city = self._reader("city")
             self.school = self._reader("school")
-            self.class_number = self._reader("school_number")
+            self.grade = self._reader("student_class")
 
     def get_ID(self):
         return self._ID

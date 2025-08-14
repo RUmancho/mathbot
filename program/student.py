@@ -202,8 +202,9 @@ class Student(Registered):
                 )
             if mode == AIMode.GENERATE_TASK:
                 return (
-                    "Сгенерируй ОДНУ математическую задачу по теме с четкой формулировкой. "
-                    "Только условие без решения и без ответа. Формат: 'Задача: ...'. "
+                    "Сгенерируй ОДНУ математическую задачу по теме на русском языке. "
+                    "Только условие БЕЗ решения, БЕЗ ответа, БЕЗ примеров и пояснений. "
+                    "ВЫВЕДИ ТОЛЬКО ОДНУ строку в формате: 'Задача: ...' и НИЧЕГО больше. "
                     f"Тема: {text}"
                 )
             return text
@@ -224,6 +225,9 @@ class Student(Registered):
                 return False
             prompt = self._build_prompt(self._ai_mode, user_text)
             answer = self.llm.ask(prompt)
+            # Санитизация для генерации заданий — оставляем только условие задачи
+            if self._ai_mode == AIMode.GENERATE_TASK:
+                answer = self._sanitize_generated_task(answer)
             self._telegramBot.send_message(self._ID, answer, reply_markup=keyboards.Student.ai_helper)
             # Завершаем режим
             self._ai_mode = None
@@ -238,5 +242,58 @@ class Student(Registered):
             self._ai_mode = None
             self._current_command = None
             return False
+
+    @staticmethod
+    def _sanitize_generated_task(raw_text: str) -> str:
+        """Возвращает из ответа LLM только условие задачи.
+
+        Правила:
+        - Если есть строка, начинающаяся с 'Задача:', берём её и последующие строки до пустой строки.
+        - Удаляем блоки, начинающиеся с 'Решение', 'Пример', 'Вид', 'Answer', 'Program', 'Программа', 'Ответ'.
+        - Если 'Задача:' не найдено — берём первую содержательную строку и добавляем префикс 'Задача: '.
+        - Обрезаем до 3–4 строк максимум, чтобы избежать лишнего текста.
+        """
+        try:
+            if not isinstance(raw_text, str):
+                return "Не удалось сгенерировать задачу"
+            lines = [ln.strip() for ln in raw_text.strip().splitlines()]
+            # Фильтрация мусорных блоков
+            drop_prefixes = (
+                "решение", "пример", "вид", "answer", "program", "программа", "ответ"
+            )
+            filtered = []
+            skip = False
+            for ln in lines:
+                low = ln.lower()
+                if any(low.startswith(pfx) for pfx in drop_prefixes):
+                    skip = True
+                if skip:
+                    # Заканчиваем пропуск при пустой строке
+                    if ln == "":
+                        skip = False
+                    continue
+                filtered.append(ln)
+
+            # Если есть 'Задача:' — взять блок оттуда до пустой строки
+            start_idx = next((i for i, ln in enumerate(filtered) if ln.lower().startswith("задача:")), None)
+            if start_idx is not None:
+                result_block = []
+                for ln in filtered[start_idx:]:
+                    if ln == "":
+                        break
+                    result_block.append(ln)
+                result_block = result_block[:4]
+                return "\n".join(result_block) if result_block else filtered[start_idx]
+
+            # Иначе — берём первую непустую строку как условие
+            first = next((ln for ln in filtered if ln), "")
+            if not first:
+                return "Не удалось сгенерировать задачу"
+            if not first.lower().startswith("задача:"):
+                first = f"Задача: {first}"
+            return first
+        except Exception as e:
+            print(f"Ошибка санитизации текста задачи: {e}")
+            return "Не удалось сгенерировать задачу"
 
 

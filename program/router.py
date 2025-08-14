@@ -71,18 +71,10 @@ def handle_student_commands(request: str, user: Student):
         user.ai_generate_task()
     elif request == "ai помощник":
         user.show_ai_helper_menu()
-    elif request == "помощь с задачей":
-        user.ai_help_with_problem()
-    elif request == "объяснить теорию":
-        user.ai_explain_theory()
-    elif request == "получить советы":
-        user.ai_tips()
-    elif request == "план обучения":
-        user.ai_study_plan()
     elif request == "проверить решение":
         user.ai_check_solution()
-    elif request == "практика":
-        user.ai_practice()
+    elif request == "сгенерировать задание":
+        user.ai_generate_task()
     elif request == "удалить профиль":
         user.delete_account()
     else:
@@ -126,26 +118,6 @@ def handle_teacher_commands(request: str, user: Teacher):
     elif request == "ai помощник":
         try:
             user._telegramBot.send_message(user.get_ID(), "Раздел AI Помощник", reply_markup=keyboards.Teacher.ai_helper)
-        except Exception:
-            pass
-    elif request == "создать объяснение":
-        try:
-            user._ai_mode = "explain"
-            user._telegramBot.send_message(user.get_ID(), "Какую тему объяснить ученикам?")
-            user._current_command = user._ai_check_individual_solution
-        except Exception:
-            pass
-    elif request == "анализ студента":
-        try:
-            user._ai_mode = "analyze_student"
-            user._telegramBot.send_message(user.get_ID(), "Пришлите ответы/работу ученика для анализа")
-            user._current_command = user._ai_check_individual_solution
-        except Exception:
-            pass
-    elif request == "персонализированное задание":
-        try:
-            user._telegramBot.send_message(user.get_ID(), "Укажите тему и уровень (например: Квадратные уравнения, базовый)")
-            user._current_command = user._receive_individual_task
         except Exception:
             pass
     elif request == "сгенерировать задание":

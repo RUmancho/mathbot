@@ -105,7 +105,7 @@ class LLM:
         """Отправляет промпт в модель и возвращает ответ."""
 
         response_text = self.model.invoke(self.prompt)
-        
+
         # Для расчетов извлекаем только число
         if self.response_type == ResponseType.CALCULATION:
             return self._extract_number(response_text)
@@ -116,9 +116,3 @@ class LLM:
         """Извлекает число из текста ответа"""
         matches = re.findall(r"-?\d+\.?\d*", text)
         return matches[0] if matches else "Could not extract number"
-
-phi_llm = LLM()
-phi_llm.set_role("math teacher")
-phi_llm.set_response_type(ResponseType.EXPLANATION)
-phi_llm.explain("What is the square root of 16?")
-print(phi_llm.request())

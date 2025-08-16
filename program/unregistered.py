@@ -68,7 +68,7 @@ class Guest(User):
                     username=f"@{self._bot.get_chat(self._info.get_ID()).username}",
                 )
                 if database.Manager.write(record):
-                    self.out("Вы зарегистрированы как учитель")
+                    self.out("Вы зарегистрированы как учитель", keyboards.Teacher.main)
                     self.completed = True
                 else:
                     self.out("Не удалось сохранить профиль. Попробуйте позже")
@@ -157,7 +157,7 @@ class Guest(User):
                     grade=self._data.get("student_class"),
                 )
                 if database.Manager.write(record):
-                    self.out("Вы зарегистрированы как ученик")
+                    self.out("Вы зарегистрированы как ученик", keyboards.Student.main)
                     self.completed = True
                 else:
                     self.out("Не удалось сохранить профиль. Попробуйте позже")

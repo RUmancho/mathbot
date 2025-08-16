@@ -1,5 +1,6 @@
 import database
 import core
+import keyboards
 
 class User:
     RUN_BOT_COMMADS = ["/start"]
@@ -125,7 +126,7 @@ class Registered(User):
                 try:
                     deleted = database.Manager.delete_record(database.Tables.Users, "telegram_id", self._info.get_ID())
                     if deleted:
-                        self.out("Профиль удалён")
+                        self.out("Профиль удалён", keyboards.Guest.main)
                     else:
                         self.out("Не удалось удалить профиль. Попробуйте позже")
                         self.stop()

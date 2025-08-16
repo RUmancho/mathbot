@@ -93,8 +93,7 @@ class Student:
     
     profile = create_keyboard(
         ["/главная"],
-        ["Удалить профиль", "Редактировать профиль"],
-        ["Отмена"]
+        ["Удалить профиль", "Редактировать профиль"]
     )
     
     application = create_keyboard(

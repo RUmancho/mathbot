@@ -186,7 +186,11 @@ class Teacher(Registered):
             oldApplication = database.Client(ID).application
             newApplication = f"{(oldApplication or '')}{self._ID};"
             database.Manager.update_record(database.Tables.Users, "telegram_id", ID, "application", newApplication)
-            self.out(f"учитель {self.name} {self.surname} хочет прикрепить вас к себе. Для подтверждения перейдите в заявки")
+            try:
+                # Уведомляем каждого ученика напрямую
+                self._telegramBot.send_message(ID, f"учитель {self.name} {self.surname} хочет прикрепить вас к себе. Для подтверждения перейдите в заявки")
+            except Exception:
+                pass
         self.out("Заявка отправлена", keyboards.Teacher.main)
         return True
 

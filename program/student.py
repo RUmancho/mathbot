@@ -64,6 +64,10 @@ class Student(Registered):
         """Заглушка: получение заданий (можно расширить сохранением в БД)."""
         self.out("Функция получения заданий в разработке", keyboards.Student.main)
 
+    def submit_solution(self):
+        """Заглушка: отправка решения (пока без БД/файлов)."""
+        self.out("Функция отправки решения в разработке", keyboards.Student.main)
+
     def show_ai_helper_menu(self):
         """Открывает раздел AI‑помощника для ученика."""
         self.out("Раздел AI Помощник", keyboards.Student.ai_helper)
@@ -77,6 +81,11 @@ class Student(Registered):
         """Генерирует ОДНУ задачу по теме без решения и ответа."""
         self._ai_mode = AIMode.GENERATE_TASK
         self.out("Укажите тему, по которой сгенерировать одно задание (без решения)")
+
+    def ai_check_solution(self):
+        """Проверяет решение задачи с помощью AI (индивидуально)."""
+        self._ai_mode = AIMode.CHECK_SOLUTION
+        self.out("Пришлите ваше решение текстом. Я помогу проверить.", keyboards.Student.ai_helper)
 
     def _ai_receive_and_answer(self):
         """Получает ввод пользователя, отправляет промпт LLM и возвращает ответ"""

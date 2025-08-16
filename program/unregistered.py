@@ -59,13 +59,16 @@ class Guest(User):
         def verify_password(self):
             if core.Validator.create_password(self._current_request):
                 self._store("password", self._current_request)
+                chat = self._bot.get_chat(self._info.get_ID())
+                uname = getattr(chat, "username", None)
+                username_value = f"@{uname}" if uname else None
                 record = database.Tables.Users(
                     telegram_id=self._info.get_ID(),
                     role="учитель",
                     name=self._data.get("name"),
                     surname=self._data.get("surname"),
                     password=self._data.get("password"),
-                    username=f"@{self._bot.get_chat(self._info.get_ID()).username}",
+                    username=username_value,
                 )
                 if database.Manager.write(record):
                     self.out("Вы зарегистрированы как учитель", keyboards.Teacher.main)
@@ -145,9 +148,12 @@ class Guest(User):
         def verify_class(self):
             if core.Validator.class_number(self._current_request):
                 self._store("student_class", self._current_request)
+                chat = self._bot.get_chat(self._info.get_ID())
+                uname = getattr(chat, "username", None)
+                username_value = f"@{uname}" if uname else None
                 record = database.Tables.Users(
                     telegram_id=self._info.get_ID(),
-                    username=f"@{self._bot.get_chat(self._info.get_ID()).username}",
+                    username=username_value,
                     role="ученик",
                     name=self._data.get("name"),
                     surname=self._data.get("surname"),

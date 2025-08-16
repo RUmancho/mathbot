@@ -74,7 +74,8 @@ class Client:
         return Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._telegram_id, column)
 
     def _redactor(self, column: str, value):
-        Manager.update_record(Tables.Users, Tables.Users.telegram_id == self._telegram_id, column, value)
+        # Обновляем запись пользователя по telegram_id, указывая имя столбца фильтра явно
+        Manager.update_record(Tables.Users, "telegram_id", self._telegram_id, column, value)
 
     def __setattr__(self, name: str, value) -> None:
         if name in self.CHANGEABLE_ATTRIBUTES:

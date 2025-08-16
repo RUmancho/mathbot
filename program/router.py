@@ -46,10 +46,10 @@ def handle_student_commands(request: str, user: Student):
         user.ai_generate_task()
     elif request == "ai помощник":
         user.show_ai_helper_menu()
+    elif request == "практика":
+        user.ai_practice()
     elif request == "проверить решение":
         user.ai_check_solution()
-    elif request == "сгенерировать задание":
-        user.ai_generate_task()
     elif request == "удалить профиль":
         user.delete_account()
     else:

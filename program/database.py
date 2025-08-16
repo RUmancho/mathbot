@@ -71,7 +71,7 @@ class Client:
             self.__dict__["grade"] = self._reader("grade")
 
     def _reader(self, column: str):
-        Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._telegram_id, column)
+        return Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._telegram_id, column)
 
     def _redactor(self, column: str, value):
         Manager.update_record(Tables.Users, Tables.Users.telegram_id == self._telegram_id, column, value)
@@ -83,6 +83,9 @@ class Client:
             raise AttributeError(f"attribute {name} is not changeable")
 
         super().__setattr__(name, value)
+    
+    def get_ID(self) -> str:
+        return self.__dict__.get("_telegram_id")
         
 
 class Manager:

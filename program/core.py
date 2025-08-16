@@ -1,4 +1,4 @@
-import database
+from database import *
 import config
 import os
 
@@ -38,6 +38,9 @@ class Process:
     def stop(self):
         self._i = 0
         self._is_active = False
+
+    def out(self, text: str, keyboard = None):
+        self._bot.send_message(self._info.get_ID(), text, reply_markup = keyboard)
 
     def execute(self):
         try:

@@ -65,11 +65,12 @@ class Guest(User):
                     name=self._data.get("name"),
                     surname=self._data.get("surname"),
                     password=self._data.get("password"),
-                    ref=None
                 )
-                database.Manager.write(record)
-                self.out("Вы зарегистрированы как учитель")
-                self.completed = True
+                if database.Manager.write(record):
+                    self.out("Вы зарегистрированы как учитель")
+                    self.completed = True
+                else:
+                    self.out("Не удалось сохранить профиль. Попробуйте позже")
             else:
                 self.out("Некорректный пароль. Попробуйте снова")
                 raise core.UserInputError("invalid password")
@@ -151,12 +152,13 @@ class Guest(User):
                     password=self._data.get("password"),
                     city=self._data.get("city"),
                     school=self._data.get("school"),
-                    student_class=self._data.get("student_class"),
-                    ref=None
+                    grade=self._data.get("student_class"),
                 )
-                database.Manager.write(record)
-                self.out("Вы зарегистрированы как ученик")
-                self.completed = True
+                if database.Manager.write(record):
+                    self.out("Вы зарегистрированы как ученик")
+                    self.completed = True
+                else:
+                    self.out("Не удалось сохранить профиль. Попробуйте позже")
             else:
                 self.out("Некорректное значение класса. Попробуйте снова")
                 raise core.UserInputError("invalid class")
@@ -165,13 +167,12 @@ class Guest(User):
         self.reg_process = self.TeacherRegistration(self._ID)
         self.in_registration = True
         self._current_command = self._cancelable_registration_execute
-        self._current_command()
+        return True
 
     def student_registration(self):
         self.reg_process = self.StudentRegistration(self._ID)
         self.in_registration = True
         self._current_command = self._cancelable_registration_execute
-        self._current_command()
         return True
 
     def cancel_current_action(self):

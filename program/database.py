@@ -46,33 +46,32 @@ class Client:
     CHANGEABLE_ATTRIBUTES = ["name", "surname", "password", "role"]
 
     def __init__(self, telegram_ID: str):
-        self._telegram_id = telegram_ID
-        self.username = self._reader("username")
-        self.password = self._reader("password")
-        self.name = self._reader("name")
-        self.surname = self._reader("surname")
-        self.role = self._reader("role")
+        self.__dict__["_telegram_id"] = telegram_ID
+        self.__dict__["username"] = self._reader("username")
+        self.__dict__["password"] = self._reader("password")
+        self.__dict__["name"] = self._reader("name")
+        self.__dict__["surname"] = self._reader("surname")
+        self.__dict__["role"] = self._reader("role")
 
-        self.my_students = None
-        self.my_teachers = None
-        self.application = None
-        self.city = None
-        self.school = None
-        self.grade = None
+        self.__dict__["my_students"] = None
+        self.__dict__["my_teachers"] = None
+        self.__dict__["application"] = None
+        self.__dict__["city"] = None
+        self.__dict__["school"] = None
+        self.__dict__["grade"] = None
 
-        if self.role == "учитель":
-            self.my_students = self._reader("my_students")
+        if self.__dict__["role"] == "учитель":
+            self.__dict__["my_students"] = self._reader("my_students")
 
-        if self.role == "ученик":
-            self.my_teachers = self._reader("my_teachers")
-            self.application = self._reader("application")
-            self.city = self._reader("city")
-            self.school = self._reader("school")
-            self.grade = self._reader("grade")
+        if self.__dict__["role"] == "ученик":
+            self.__dict__["my_teachers"] = self._reader("my_teachers")
+            self.__dict__["application"] = self._reader("application")
+            self.__dict__["city"] = self._reader("city")
+            self.__dict__["school"] = self._reader("school")
+            self.__dict__["grade"] = self._reader("grade")
 
     def _reader(self, column: str):
-        search = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._telegram_id, column)
-        return search       
+        Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._telegram_id, column)
 
     def _redactor(self, column: str, value):
         Manager.update_record(Tables.Users, Tables.Users.telegram_id == self._telegram_id, column, value)
@@ -187,3 +186,6 @@ class Manager:
                 return [i[0] for i in session.query(column).all() if i[0] is not None]
         except SQLAlchemyError as e:
             return []
+
+def find_my_role(ID: str):
+    return Manager.get_cell(Tables.Users, Tables.Users.telegram_id == ID, "role")

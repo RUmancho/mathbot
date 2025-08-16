@@ -1,28 +1,14 @@
-"""Базовые классы и вспомогательные сущности для пользователей.
-
-Содержит агрегатор `User`, общий класс для зарегистрированного пользователя
-`Registered` и вспомогательные механизмы выполнения команд.
-"""
-
-from database import Manager, Tables
+import database
 import core
 
 
-def find_my_role(ID: str):
-    return Manager.get_cell(Tables.Users, Tables.Users.telegram_id == ID, "role")
-
 
 class User:
-    """Агрегатор пользователя Telegram, делегирующий поведение ролям.
-
-    Отвечает за хранение текущего `chat_id`, телеграм‑бота, последнего ввода,
-    отложенной команды и переключение между реализациями ролей (ученик/учитель).
-    """
     RUN_BOT_COMMADS = ["/start"]
     SHOW_MAIN_MENU = ["/меню", "/главная", "/menu", "/main", "/home"]
 
     def __init__(self, ID: str, bind_bot = None):
-        self.info = core.Client(ID)
+        self.info = database.Client(ID)
         self._ID = ID
         self._telegramBot = bind_bot
         self._current_request = None
@@ -129,57 +115,33 @@ class Registered(User):
         def __init__(self, ID, cancelable: bool = True):
             super().__init__(ID, cancelable)
             self._chain = [self.ask_for_password, self.password_entry_verification]
-            # Важно: корректно задать максимальный индекс шага после установки цепочки
             self._max_i = len(self._chain) - 1
 
         def ask_for_password(self):
             """Запрашивает пароль у пользователя."""
-            self._bot.send_message(self._me.get_ID(), "Введите ваш пароль для удаления профиля")
+            self.out("Введите ваш пароль для удаления профиля")
 
         def password_entry_verification(self):
             """Проверяет введённый пароль и удаляет профиль при успешном вводе."""
             if self._current_request == self._me.password:
                 try:
-                    deleted = Manager.delete_record(Tables.Users, "telegram_id", self._me.get_ID())
+                    deleted = database.Manager.delete_record(database.Tables.Users, "telegram_id", self._me.get_ID())
                     if deleted:
-                        self._bot.send_message(self._me.get_ID(), "Профиль удалён")
+                        self.out("Профиль удалён")
                     else:
-                        self._bot.send_message(self._me.get_ID(), "Не удалось удалить профиль. Попробуйте позже")
+                        self.out("Не удалось удалить профиль. Попробуйте позже")
                         self.stop()
                 except Exception:
-                    self._bot.send_message(self._me.get_ID(), "Произошла ошибка при удалении профиля")
+                    self.out("Произошла ошибка при удалении профиля")
                     self.stop()
             else:
-                self._bot.send_message(self._me.get_ID(), "Неверный пароль, повторите попытку")
+                self.out("Неверный пароль, повторите попытку")
                 raise core.UserInputError("password entry error")
 
     def __init__(self, ID: str = "", telegramBot=None):
         super().__init__(ID, telegramBot)
-        self.name = None
-        self.surname = None
-        self.password = None
-        self.role = None
         self.recognize_user()
-        try:
-            username = None
-            try:
-                if hasattr(self, "_telegramBot") and self._telegramBot:
-                    chat = self._telegramBot.get_chat(self._ID)
-                    username = getattr(chat, "username", None)
-            except Exception as e:
-                print(f"Не удалось получить username Telegram: {e}")
-            ref_value = f"@{username}" if username else None
-            Manager.update_record(Tables.Users, "telegram_id", self._ID, "ref", ref_value)
-            if not username:
-                try:
-                    self._telegramBot.send_message(
-                        self._ID,
-                        "У вас не задано имя пользователя (@username). Зайдите в Настройки Telegram → Имя пользователя и задайте его, чтобы вас могли упоминать."
-                    )
-                except Exception:
-                    pass
-        except Exception:
-            pass
+
         self.delete_profile_process = self.DeleteProfile(ID)
 
     def delete_account(self):
@@ -223,16 +185,3 @@ class Registered(User):
             return bool(self._cancelable_delete())
         except Exception:
             return False
-
-    def recognize_user(self):
-        """Загружает базовые данные профиля пользователя из БД."""
-        self.name = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, "name")
-        self.surname = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, "surname")
-        self.password = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, "password")
-        self.role = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, "role")
-
-    def _reader_my_data(self, column: str):
-        """Читает произвольную колонку профиля пользователя из БД."""
-        return Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, column)
-
-

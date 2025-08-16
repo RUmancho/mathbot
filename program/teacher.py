@@ -1,5 +1,5 @@
 from sqlalchemy import and_
-from database import Manager, Tables
+import database
 import keyboards
 import core
 from LLM import LLM
@@ -161,16 +161,16 @@ class Teacher(Registered):
         class_number = dataFilter.get("class_number")
 
         condition = and_(
-            Tables.Users.city == city,
-            Tables.Users.school == school,
-            Tables.Users.grade == class_number,
+            database.Tables.Users.city == city,
+            database.Tables.Users.school == school,
+            database.Tables.Users.grade == class_number,
         )
-        search = Manager.search_records(Tables.Users, condition)
+        search = database.Manager.search_records(database.Tables.Users, condition)
         if search:
             student_ids = []
             out = ""
             for student in search:
-                student = core.Client(student["telegram_id"])
+                student = database.Client(student["telegram_id"])
                 out += f"{student.name} {student.surname}\n"
                 student_ids.append(student.get_ID())
 
@@ -180,17 +180,13 @@ class Teacher(Registered):
         else:
             self.out("ничего не найдено")
 
-    @logger.log
     def send_application(self):
         """Отправляет заявки всем найденным ученикам на прикрепление к учителю."""
         for ID in self.searchClass:
-            oldApplication = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == ID, "application")
+            oldApplication = database.Client(ID).application
             newApplication = f"{(oldApplication or '')}{self._ID};"
-            Manager.update_record(Tables.Users, "telegram_id", ID, "application", newApplication)
-            self._telegramBot.send_message(
-                ID,
-                f"учитель {self.name} {self.surname} хочет прикрепить вас к себе. Для подтверждения перейдите в заявки",
-            )
+            database.Manager.update_record(database.Tables.Users, "telegram_id", ID, "application", newApplication)
+            self.out(f"учитель {self.name} {self.surname} хочет прикрепить вас к себе. Для подтверждения перейдите в заявки")
         self.out("Заявка отправлена", keyboards.Teacher.main)
         return True
 
@@ -263,7 +259,7 @@ class Teacher(Registered):
     @logger.log
     def show_my_students(self):
         """Выводит список прикреплённых к учителю учеников с данными."""
-        attached_students = self._reader_my_data("attached_students")
+        attached_students = self.info.my_students
         if not attached_students:
             self.out("У вас пока нет прикрепленных учеников", keyboards.Teacher.main)
             return
@@ -271,7 +267,7 @@ class Teacher(Registered):
         student_ids = attached_students.split(";")[:-1]
         out = "Ваши ученики:\n\n"
         for student_id in student_ids:
-            me = core.Client(student_id)
+            me = database.Client(student_id)
             out += f"• {me.name} {me.surname} (школа №{me.school}, {me.grade} класс)\n"
 
         self.out(out, keyboards.Teacher.main)

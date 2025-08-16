@@ -123,9 +123,9 @@ class Registered(User):
 
         def password_entry_verification(self):
             """Проверяет введённый пароль и удаляет профиль при успешном вводе."""
-            if self._current_request == self._me.password:
+            if self._current_request == self._info.password:
                 try:
-                    deleted = database.Manager.delete_record(database.Tables.Users, "telegram_id", self._me.get_ID())
+                    deleted = database.Manager.delete_record(database.Tables.Users, "telegram_id", self._info.get_ID())
                     if deleted:
                         self.out("Профиль удалён")
                     else:

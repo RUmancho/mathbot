@@ -1,4 +1,4 @@
-from database import *
+import database
 import config
 import os
 
@@ -11,7 +11,7 @@ class Process:
     _bot = None
 
     def __init__(self, ID, cancelable = True):
-        self._me = Client(ID)
+        self._info = database.Client(ID)
         self._chain = []
         self._max_i = len(self._chain) - 1
         self._i = 0
@@ -30,8 +30,8 @@ class Process:
                 self._canceled = True
                 self.stop()
                 try:
-                    if self._bot and self._me:
-                        self._bot.send_message(self._me.get_ID(), "Действие отменено")
+                    if self._bot and self._info:
+                        self._bot.send_message(self._info.get_ID(), "Действие отменено")
                 except Exception:
                     pass
 
@@ -71,7 +71,7 @@ class Process:
                 except Exception as inner_e:
                     print(f"Ошибка при выполнении следующего шага процесса: {inner_e}")
         except UserInputError as e:
-            print(f"Пользователь {self._me.name} неверно ввёл запрошенные данные")
+            print(f"Пользователь {self._info.name} неверно ввёл запрошенные данные")
 
     @classmethod
     def set_bot(cls, bot_instance):

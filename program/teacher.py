@@ -24,7 +24,7 @@ class Teacher(Registered):
             self._max_i = len(self._chain) - 1
 
         def _say(self, text: str):
-            self._bot.send_message(self._me.get_ID(), text)
+            self._bot.send_message(self._info.get_ID(), text)
 
         def _store(self, key: str, value):
             self._data[key] = value

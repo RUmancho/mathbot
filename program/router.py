@@ -1,10 +1,11 @@
 import core
 import keyboards
 from theory import handler as theory
-from base import User as AggregatedUser, find_my_role
+from base import User as AggregatedUser
 from student import Student
 from teacher import Teacher
 from unregistered import Guest
+import database
 
 AGGREGATED_USERS: dict[str, AggregatedUser] = {}
 
@@ -121,7 +122,7 @@ def route_message(msg, aggregated_user: AggregatedUser) -> None:
 
     aggregated_user.reset_role_change_flag()
 
-    role = find_my_role(ID)
+    role = database.find_my_role(ID)
     if role == "ученик":
         active = aggregated_user.set_role(Student, ID)
         handler = handle_student_commands

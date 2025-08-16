@@ -1,8 +1,6 @@
 import database
 import core
 
-
-
 class User:
     RUN_BOT_COMMADS = ["/start"]
     SHOW_MAIN_MENU = ["/меню", "/главная", "/menu", "/main", "/home"]
@@ -140,8 +138,6 @@ class Registered(User):
 
     def __init__(self, ID: str = "", telegramBot=None):
         super().__init__(ID, telegramBot)
-        self.recognize_user()
-
         self.delete_profile_process = self.DeleteProfile(ID)
 
     def delete_account(self):

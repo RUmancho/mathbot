@@ -65,7 +65,7 @@ class Guest(User):
                     name=self._data.get("name"),
                     surname=self._data.get("surname"),
                     password=self._data.get("password"),
-                    username=self._bot.get_chat(self._info.get_ID())
+                    username=f"@{self._bot.get_chat(self._info.get_ID()).username}",
                 )
                 if database.Manager.write(record):
                     self.out("Вы зарегистрированы как учитель")
@@ -147,7 +147,7 @@ class Guest(User):
                 self._store("student_class", self._current_request)
                 record = database.Tables.Users(
                     telegram_id=self._info.get_ID(),
-                    username=self._bot.get_chat(self._info.get_ID()),
+                    username=f"@{self._bot.get_chat(self._info.get_ID()).username}",
                     role="ученик",
                     name=self._data.get("name"),
                     surname=self._data.get("surname"),

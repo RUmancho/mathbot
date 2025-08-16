@@ -24,11 +24,6 @@ FileSender.set_bot(bot)
 
 @bot.message_handler()
 def main(msg):
-    """Обработчик любого входящего сообщения.
-
-    Делегирует обработку в маршрутизатор, предварительно получив или
-    создав агрегированный объект пользователя по `chat_id`.
-    """
     try:
         aggregated_user = get_or_create_user(bot, str(msg.chat.id))
         route_message(msg, aggregated_user)

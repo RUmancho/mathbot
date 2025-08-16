@@ -41,6 +41,51 @@ engine = create_engine(f"sqlite:///{relatative_path_database}")
 Base.metadata.create_all(engine)
 
 
+class Client:
+    """Читает/изменяет поля пользователя из БД"""
+    CHANGEABLE_ATTRIBUTES = ["name", "surname", "password", "role"]
+
+    def __init__(self, telegram_ID: str):
+        self._telegram_id = telegram_ID
+        self.username = self._reader("username")
+        self.password = self._reader("password")
+        self.name = self._reader("name")
+        self.surname = self._reader("surname")
+        self.role = self._reader("role")
+
+        self.my_students = None
+        self.my_teachers = None
+        self.application = None
+        self.city = None
+        self.school = None
+        self.grade = None
+
+        if self.role == "учитель":
+            self.my_students = self._reader("my_students")
+
+        if self.role == "ученик":
+            self.my_teachers = self._reader("my_teachers")
+            self.application = self._reader("application")
+            self.city = self._reader("city")
+            self.school = self._reader("school")
+            self.grade = self._reader("grade")
+
+    def _reader(self, column: str):
+        search = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._telegram_id, column)
+        return search       
+
+    def _redactor(self, column: str, value):
+        Manager.update_record(Tables.Users, Tables.Users.telegram_id == self._telegram_id, column, value)
+
+    def __setattr__(self, name: str, value) -> None:
+        if name in self.CHANGEABLE_ATTRIBUTES:
+            self._redactor(name, value)
+        else:
+            raise AttributeError(f"attribute {name} is not changeable")
+
+        super().__setattr__(name, value)
+        
+
 class Manager:
     session = sessionmaker(bind=engine)
 

@@ -27,7 +27,7 @@ class Student(Registered):
         teachersIDS = teachersIDS.split(";")[:-1]
         name_surname_ref_teacher = []
         for ID in teachersIDS:
-            teacher = core.UserRecognizer(ID)
+            teacher = core.Client(ID)
             label = f"{teacher.name} {teacher.surname}"
             if teacher.ref:
                 label = f"{label}, {teacher.ref}"
@@ -51,7 +51,7 @@ class Student(Registered):
         teacher_ids = my_teachers.split(";")[:-1]
         out = "Ваши учителя:\n\n"
         for teacher_id in teacher_ids:
-            teacher = core.UserRecognizer(teacher_id)
+            teacher = core.Client(teacher_id)
             out += f"• {teacher.name} {teacher.surname}\n"
 
         self.out(out, keyboards.Student.main)

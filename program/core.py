@@ -5,36 +5,13 @@ import os
 class UserInputError(Exception):
     """Исключение при некорректно введённых данных."""
 
-
-class UserRecognizer:
-    """Читает и кэширует базовые поля пользователя из БД по `telegram_id`."""
-    def __init__(self, ID: str):
-        self._ID = ID
-        self.name = self._reader("name")
-        self.surname = self._reader("surname")
-        self.password = self._reader("password")
-        self.role = self._reader("role")
-
-        if self.role == "ученик":
-            self.city = self._reader("city")
-            self.school = self._reader("school")
-            self.grade = self._reader("student_class")
-
-    def get_ID(self):
-        return self._ID
-
-    def _reader(self, column: str):
-        search = Manager.get_cell(Tables.Users, Tables.Users.telegram_id == self._ID, column)
-        return search
-
-
 class Process:
     """Базовый класс для многошаговых процессов с поддержкой отмены."""
     CANCEL_KEYWORD = "отмена"
     _bot = None
 
     def __init__(self, ID, cancelable = True):
-        self._me = UserRecognizer(ID)
+        self._me = Client(ID)
         self._chain = []
         self._max_i = len(self._chain) - 1
         self._i = 0
@@ -110,6 +87,7 @@ class FileSender:
     unzipped_text_document = True # позволить боту отправить сразу текст из файла
     bot = None
     chat_id = None
+    
     # Базовая директория проекта (на уровень выше папки program)
     PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -164,59 +142,31 @@ class FileSender:
             return path
 
     def __push_image(self, path: str, keyboard = None, caption: str = None):
-        try:
-            resolved = self._resolve_path(path)
-            if not self.bot:
-                raise RuntimeError("Bot is not configured. Set via FileSender.set_bot(bot)")
-            with open(resolved, 'rb') as file:
-                self.bot.send_photo(self.chat_id, file, reply_markup = keyboard, caption=caption)
-        except Exception as e:
-            print(f"Ошибка отправки изображения '{path}': {e}")
+        resolved = self._resolve_path(path)
+        with open(resolved, 'rb') as file:
+            self.bot.send_photo(self.chat_id, file, reply_markup = keyboard, caption=caption)
 
     def __push_document(self, path: str, keyboard = None, caption: str = None):
-        try:
-            resolved = self._resolve_path(path)
-            if not self.bot:
-                raise RuntimeError("Bot is not configured. Set via FileSender.set_bot(bot)")
-            with open(resolved, 'rb') as file:
-                self.bot.send_document(self.chat_id, file, reply_markup = keyboard, caption=caption)
-        except Exception as e:
-            print(f"Ошибка отправки документа '{path}': {e}")
+        resolved = self._resolve_path(path)
+        with open(resolved, 'rb') as file:
+            self.bot.send_document(self.chat_id, file, reply_markup = keyboard, caption=caption)
 
     def __push_audio(self, path: str, keyboard = None, caption: str = None):
-        try:
-            resolved = self._resolve_path(path)
-            if not self.bot:
-                raise RuntimeError("Bot is not configured. Set via FileSender.set_bot(bot)")
-            with open(resolved, 'rb') as file:
-                self.bot.send_audio(self.chat_id, file, reply_markup = keyboard, caption=caption)
-        except Exception as e:
-            print(f"Ошибка отправки аудио '{path}': {e}")
+        resolved = self._resolve_path(path)
+        with open(resolved, 'rb') as file:
+            self.bot.send_audio(self.chat_id, file, reply_markup = keyboard, caption=caption)
 
     def __push_video(self, path: str, keyboard = None, caption: str = None):
-        try:
-            resolved = self._resolve_path(path)
-            if not self.bot:
-                raise RuntimeError("Bot is not configured. Set via FileSender.set_bot(bot)")
-            with open(resolved, 'rb') as file:
-                self.bot.send_video(self.chat_id, file, reply_markup = keyboard, caption=caption)
-        except Exception as e:
-            print(f"Ошибка отправки видео '{path}': {e}")
+        resolved = self._resolve_path(path)
+        with open(resolved, 'rb') as file:
+            self.bot.send_video(self.chat_id, file, reply_markup = keyboard, caption=caption)
 
     def __push_unzipped_text_document(self, path: str, keyboard = None, caption: str = None):
-        try:
-            resolved = self._resolve_path(path)
-            if not self.bot:
-                raise RuntimeError("Bot is not configured. Set via FileSender.set_bot(bot)")
-            with open(resolved, 'r', encoding='utf-8') as file:
-                text = file.read()
+        resolved = self._resolve_path(path)
+        with open(resolved, 'r', encoding='utf-8') as file:
+            text = file.read()
 
-                if caption is not None:
-                    caption = f"\n{caption}\"\n"
-                self.bot.send_message(self.chat_id, f"{caption}\n{text}", reply_markup = keyboard)
-        except Exception as e:
-            print(f"Ошибка отправки текстового файла '{path}': {e}")
-
+        self.bot.send_message(self.chat_id, f"{text}", reply_markup = keyboard)
 
 
 class Validator:

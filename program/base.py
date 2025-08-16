@@ -22,7 +22,7 @@ class User:
     SHOW_MAIN_MENU = ["/меню", "/главная", "/menu", "/main", "/home"]
 
     def __init__(self, ID: str, bind_bot = None):
-        self.info = core.UserRecognizer(ID)
+        self.info = core.Client(ID)
         self._ID = ID
         self._telegramBot = bind_bot
         self._current_request = None

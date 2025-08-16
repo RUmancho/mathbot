@@ -170,7 +170,7 @@ class Teacher(Registered):
             student_ids = []
             out = ""
             for student in search:
-                student = core.UserRecognizer(student["telegram_id"])
+                student = core.Client(student["telegram_id"])
                 out += f"{student.name} {student.surname}\n"
                 student_ids.append(student.get_ID())
 
@@ -271,7 +271,7 @@ class Teacher(Registered):
         student_ids = attached_students.split(";")[:-1]
         out = "Ваши ученики:\n\n"
         for student_id in student_ids:
-            me = core.UserRecognizer(student_id)
+            me = core.Client(student_id)
             out += f"• {me.name} {me.surname} (школа №{me.school}, {me.grade} класс)\n"
 
         self.out(out, keyboards.Teacher.main)

@@ -1,4 +1,4 @@
-from database import *
+import database
 import config
 import os
 
@@ -40,7 +40,14 @@ class Process:
         self._is_active = False
 
     def out(self, text: str, keyboard = None):
-        self._bot.send_message(self._info.get_ID(), text, reply_markup = keyboard)
+        try:
+            if self._bot and self._info:
+                self._bot.send_message(self._info.get_ID(), text, reply_markup = keyboard)
+        except Exception as e:
+            try:
+                print(f"Не удалось отправить сообщение из процесса: {e}")
+            except Exception:
+                pass
 
     def execute(self):
         try:

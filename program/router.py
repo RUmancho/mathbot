@@ -104,6 +104,14 @@ def handle_unregistered_commands(request: str, user: Guest):
     if is_response:
         return
 
+    # Если пользователь в процессе регистрации, не отправляем предупреждение об неизвестной команде.
+    # Процесс регистрации обработает ввод через отложенную команду.
+    try:
+        if getattr(user, "in_registration", False):
+            return
+    except Exception:
+        pass
+
     if request in user.RUN_BOT_COMMADS:
         user.getting_started()
     elif request in user.SHOW_MAIN_MENU:

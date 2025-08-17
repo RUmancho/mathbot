@@ -211,7 +211,7 @@ class Teacher(Registered):
             self.class_search_process.execute()
             if not getattr(self.class_search_process, "_is_active", False):
                 self.class_search_process = None
-            
+            return True
         except Exception:
             return False
             
@@ -237,11 +237,20 @@ class Teacher(Registered):
 
     def assign_homework(self):
         """Показывает меню для задания домашней работы (выбор типа)."""
-        self.out("Выберите тип задания", keyboards.Teacher.homework)
+        try:
+            if not self._is_attached_students():
+                self.out("У вас пока нет прикрепленных учеников", keyboards.Teacher.main)
+                return
+            self.out("Выберите тип задания", keyboards.Teacher.homework)
+        except Exception:
+            self.out("Не удалось открыть меню заданий", keyboards.Teacher.main)
 
     def assign_individual_task(self):
         """Запускает процесс выбора ученика и отправки индивидуального задания."""
         try:
+            if not self._is_attached_students():
+                self.out("У вас пока нет прикрепленных учеников", keyboards.Teacher.main)
+                return
             self.individual_assignment_process = self.IndividualAssignment(self._ID, self)
             self._cancelable_execute_individual_assignment()
         except Exception as e:
@@ -249,8 +258,15 @@ class Teacher(Registered):
 
     def assign_class_task(self):
         """Запрашивает текст задания для класса (будет отправлено всем ученикам)."""
-        self.out("Пришлите текст задания для класса", keyboards.Teacher.main)
-        self._expect_class_task = True
+        try:
+            if not self._is_attached_students():
+                self.out("У вас пока нет прикрепленных учеников", keyboards.Teacher.main)
+                return
+            self.out("Пришлите текст задания для класса", keyboards.Teacher.main)
+            self._expect_class_task = True
+        except Exception:
+            self._expect_class_task = False
+            self.out("Не удалось запросить задание для класса", keyboards.Teacher.main)
 
     def check_tasks(self):
         """Показывает меню для проверки поступивших решений."""
@@ -390,6 +406,16 @@ class Teacher(Registered):
             if getattr(self, "_expect_ai_check_individual", False):
                 return bool(self._ai_check_individual_solution())
             return False
+        except Exception:
+            return False
+
+    def _is_attached_students(self) -> bool:
+        """Есть ли у учителя прикреплённые ученики."""
+        try:
+            attached_students = getattr(self.info, "my_students", None)
+            if not attached_students:
+                return False
+            return bool(attached_students.split(";")[:-1])
         except Exception:
             return False
 

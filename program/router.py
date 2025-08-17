@@ -25,31 +25,46 @@ def _main_keyboard():
 
 
 def _try_theory(request: str, bot, chat_id: str) -> bool:
-    def text_out(text: str, kb=None):
-        try:
-            bot.send_message(chat_id, text, reply_markup=kb)
-        except Exception as e:
-            print(f"Не удалось отправить сообщение из theory: {e}")
-    return bool(theory(request, text_out, chat_id))
+    try:
+        def text_out(text: str, kb=None):
+            try:
+                bot.send_message(chat_id, text, reply_markup=kb)
+            except Exception as e:
+                print(f"Не удалось отправить сообщение из theory: {e}")
+        return bool(theory(request, text_out, chat_id))
+    except Exception as e:
+        print(f"Ошибка обработки теории: {e}")
+        return False
 
 
 def _get_response(request: str):
-    if request in START_COMMANDS:
-        return WELCOME_TEXT, _main_keyboard()
-    if request in HELP_COMMANDS or request == "помощь":
-        return HELP_TEXT, _main_keyboard()
-    return UNKNOWN_REPLY, _main_keyboard()
+    try:
+        if request in START_COMMANDS:
+            return WELCOME_TEXT, _main_keyboard()
+        if request in HELP_COMMANDS or request == "помощь":
+            return HELP_TEXT, _main_keyboard()
+        return UNKNOWN_REPLY, _main_keyboard()
+    except Exception as e:
+        print(f"Ошибка в _get_response: {e}")
+        return UNKNOWN_REPLY, _main_keyboard()
 
 
 def route_message(msg, bot) -> None:
     """Сообщение -> ответ."""
-    request = core.transform_request(msg.text)
-    chat_id = msg.chat.id
+    try:
+        request = core.transform_request(msg.text)
+        chat_id = msg.chat.id
 
-    # Попытка обработать запрос как теорию
-    if _try_theory(request, bot, chat_id):
-        return
+        # Попытка обработать запрос как теорию
+        if _try_theory(request, bot, chat_id):
+            return
 
-    # Простые команды
-    text, keyboard = _get_response(request)
-    bot.send_message(chat_id, text, reply_markup=keyboard)
+        # Простые команды
+        text, keyboard = _get_response(request)
+        bot.send_message(chat_id, text, reply_markup=keyboard)
+    except Exception as e:
+        print(f"Ошибка обработки сообщения: {e}")
+        try:
+            bot.send_message(msg.chat.id, "Произошла внутренняя ошибка обработки сообщения")
+        except Exception as inner_e:
+            print(f"Не удалось отправить уведомление об ошибке: {inner_e}")

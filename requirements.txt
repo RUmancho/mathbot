@@ -3,4 +3,8 @@ python-dotenv
 sqlalchemy
 langchain
 colorama 
-langchain-ollama
+openai
+python-docx
+PyPDF2
+matplotlib
+numpy

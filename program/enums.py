@@ -10,6 +10,24 @@ class AIMode(Enum):
     CHECK_SOLUTION = "check_solution"
     PRACTICE = "practice"
     GENERATE_TASK = "generate_task"
+    
+    # Специфические режимы для разделов алгебры
+    COMPUTATIONAL_SKILLS = "computational_skills"
+    EXPRESSION_VALUE = "expression_value"
+    FORMULAS_WORK = "formulas_work"
+    SHORTHAND_FORMULAS = "shorthand_formulas"
+    EQUATIONS = "equations"
+    INEQUALITIES = "inequalities"
+    GRAPHS = "graphs"
+    TRIGONOMETRY = "trigonometry"
+    PROBABILITY = "probability"
+    
+    # Специфические режимы для разделов геометрии
+    TRIANGLES = "triangles"
+    QUADRILATERALS = "quadrilaterals"
+    CIRCLES = "circles"
+    AREAS_VOLUMES = "areas_volumes"
+    COORDINATE_GEOMETRY = "coordinate_geometry"
 
 
 class StudentCommands(Enum):

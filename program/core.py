@@ -1,6 +1,14 @@
 import database
 import config
 import os
+try:
+    from docx import Document
+    from docx.shared import Inches
+    import PyPDF2
+    DOCX_AVAILABLE = True
+except ImportError:
+    DOCX_AVAILABLE = False
+    print("Warning: python-docx and PyPDF2 not available. Word and PDF content extraction disabled.")
 
 class UserInputError(Exception):
     """Исключение при некорректно введённых данных."""
@@ -111,10 +119,11 @@ class FileSender:
             if extension in self.IMAGE_EXTENSIONS:
                 self.file_handlers[path] = self.__push_image
             elif extension in self.DOCUMENT_EXTENSIONS:
-                if not self.unzipped_text_document:
-                    self.file_handlers[path] = self.__push_document
+                # Извлекаем содержимое документов как текст
+                if self.unzipped_text_document:
+                    self.file_handlers[path] = self.__push_document_content
                 else:
-                    self.file_handlers[path] = self.__push_unzipped_text_document
+                    self.file_handlers[path] = self.__push_document
             elif extension in self.AUDIO_EXTENSIONS:
                 self.file_handlers[path] = self.__push_audio
             elif extension in self.VIDEO_EXTENSIONS:
@@ -177,6 +186,100 @@ class FileSender:
             text = file.read()
 
         self.bot.send_message(self.chat_id, f"{text}", reply_markup = keyboard)
+    
+    def __extract_docx_content(self, path: str) -> str:
+        """Извлекает текст из Word документа."""
+        try:
+            if not DOCX_AVAILABLE:
+                return "Ошибка: библиотека python-docx не установлена. Установите: pip install python-docx"
+            
+            resolved = self._resolve_path(path)
+            doc = Document(resolved)
+            
+            content_parts = []
+            for paragraph in doc.paragraphs:
+                if paragraph.text.strip():
+                    content_parts.append(paragraph.text.strip())
+            
+            # Добавляем информацию о таблицах, если есть
+            if doc.tables:
+                content_parts.append("\n📊 Документ содержит таблицы с дополнительной информацией.")
+            
+            return "\n\n".join(content_parts) if content_parts else "Документ не содержит текста."
+            
+        except Exception as e:
+            return f"Ошибка при чтении Word документа: {e}"
+    
+    def __extract_pdf_content(self, path: str) -> str:
+        """Извлекает текст из PDF документа."""
+        try:
+            if not DOCX_AVAILABLE:
+                return "Ошибка: библиотека PyPDF2 не установлена. Установите: pip install PyPDF2"
+            
+            resolved = self._resolve_path(path)
+            content_parts = []
+            
+            with open(resolved, 'rb') as file:
+                pdf_reader = PyPDF2.PdfReader(file)
+                for page_num, page in enumerate(pdf_reader.pages, 1):
+                    page_text = page.extract_text().strip()
+                    if page_text:
+                        content_parts.append(f"📄 Страница {page_num}:\n{page_text}")
+            
+            return "\n\n".join(content_parts) if content_parts else "PDF документ не содержит извлекаемого текста."
+            
+        except Exception as e:
+            return f"Ошибка при чтении PDF документа: {e}"
+    
+    def __push_document_content(self, path: str, keyboard = None, caption: str = None):
+        """Отправляет содержимое документа как текст."""
+        try:
+            extension = file_extension(path).lower()
+            
+            if extension == "docx":
+                content = self.__extract_docx_content(path)
+            elif extension == "pdf":
+                content = self.__extract_pdf_content(path)
+            elif extension == "txt":
+                resolved = self._resolve_path(path)
+                with open(resolved, 'r', encoding='utf-8') as file:
+                    content = file.read()
+            else:
+                # Для других типов документов отправляем как файл
+                self.__push_document(path, keyboard, caption)
+                return
+            
+            # Разбиваем длинный текст на части (Telegram лимит ~4096 символов)
+            max_length = 4000
+            if len(content) <= max_length:
+                self.bot.send_message(self.chat_id, content, reply_markup=keyboard)
+            else:
+                # Разбиваем на части
+                parts = []
+                current_part = ""
+                
+                for line in content.split('\n'):
+                    if len(current_part) + len(line) + 1 <= max_length:
+                        current_part += line + '\n'
+                    else:
+                        if current_part:
+                            parts.append(current_part.strip())
+                        current_part = line + '\n'
+                
+                if current_part:
+                    parts.append(current_part.strip())
+                
+                # Отправляем части
+                for i, part in enumerate(parts):
+                    if i == len(parts) - 1:  # Последняя часть с клавиатурой
+                        self.bot.send_message(self.chat_id, f"📄 Часть {i+1}/{len(parts)}:\n\n{part}", reply_markup=keyboard)
+                    else:
+                        self.bot.send_message(self.chat_id, f"📄 Часть {i+1}/{len(parts)}:\n\n{part}")
+                        
+        except Exception as e:
+            print(f"Ошибка при отправке содержимого документа {path}: {e}")
+            # Fallback: отправляем как файл
+            self.__push_document(path, keyboard, caption)
 
 
 class Validator:

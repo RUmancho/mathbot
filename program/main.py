@@ -9,8 +9,12 @@ from sqlalchemy import and_ as SQL_AND
 import datetime
 from colorama import Fore, Back, Style, init
 
+from dotenv import load_dotenv
+
 # Инициализируем colorama
 init(autoreset=True)
+
+load_dotenv()
 
 POLLING_TIMEOUT = 60
 POLLING_NONE_STOP = True

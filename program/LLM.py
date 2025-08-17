@@ -1,15 +1,8 @@
-"""Обёртка над локальной LLM (Ollama) для ответов и объяснений.
-
-Поддерживает три типа ответов: вычисление, объяснение и краткий ответ.
-Подключение выполняется к локальной службе Ollama.
-"""
-
 from langchain_ollama import OllamaLLM 
 import re
 from enum import Enum, auto
 from enums import AIMode
 
-# Константы локального подключения к Ollama
 DEFAULT_MODEL = "phi"
 
 class ResponseType(Enum):
@@ -19,13 +12,6 @@ class ResponseType(Enum):
     CONCISE = auto()      # Краткий ответ
 
 class LLM:
-    """Клиент локальной LLM (Ollama) с ролью учителя математики.
-
-    Предоставляет высокоуровневые методы:
-    - calculate: получить только числовой ответ;
-    - explain: подробное объяснение темы;
-    - ask: краткий ответ по существу.
-    """
     ROLES = {
         "math teacher": {
             "base": "You are a helpful math teacher.",
@@ -36,7 +22,6 @@ class LLM:
     }
 
     def __init__(self):
-        """Инициализирует подключение к локальной Ollama и состояния подсказки."""
         self.model = OllamaLLM(model=DEFAULT_MODEL)
 
         self.role = ""
@@ -60,30 +45,23 @@ class LLM:
         expression = self._normalize_expression(expression)
         self.task = f"Calculate: {expression}"
         self._update_prompt()
-        return self.request()
+        return self.run()
 
     def explain(self, topic: str) -> str:
         """Пишет развернутое объяснение темы с примерами и шагами."""
         self.response_type = ResponseType.EXPLANATION
         self.task = f"Explain: {topic}"
         self._update_prompt()
-        return self.request()
+        return self.run()
 
     def ask(self, question: str) -> str:
-        """Даёт краткий ответ по существу на вопрос.
-
-        Если передан уже сформированный промпт (как в AI-режимах), он будет
-        использован без добавления префикса "Answer:" для сохранения точных
-        инструкций.
-        """
+        """Даёт краткий ответ на вопрос."""
         self.response_type = ResponseType.CONCISE
-        # Используем текст как есть, без жёсткого префикса, чтобы не ломать формат
         self.task = question
         self._update_prompt()
-        return self.request()
+        return self.run()
 
     def _update_prompt(self):
-        """Формирует промпт на основе типа ответа и выбранной роли."""
         if self.response_type == ResponseType.CALCULATION:
             instruction = self.ROLES["math teacher"]["calculation"]
         elif self.response_type == ResponseType.EXPLANATION:
@@ -108,12 +86,8 @@ class LLM:
             expr = expr.replace(k, v)
         return expr
 
-    def request(self) -> str:
-        """Отправляет промпт в модель и возвращает ответ."""
-
+    def run(self) -> str:
         response_text = self.model.invoke(self.prompt)
-
-        # Для расчетов извлекаем только число
         if self.response_type == ResponseType.CALCULATION:
             return self._extract_number(response_text)
             
@@ -124,13 +98,8 @@ class LLM:
         matches = re.findall(r"-?\d+\.?\d*", text)
         return matches[0] if matches else "Could not extract number"
 
-    # ===== High-level AI helper for app modes =====
     def respond(self, mode: AIMode | None, user_text: str) -> str:
-        """Формирует промпт по режиму и возвращает ответ модели.
-
-        Для режима GENERATE_TASK дополнительно применяется санитизация,
-        чтобы вернуть только условие задачи.
-        """
+        """Формирует промпт по режиму и возвращает ответ модели."""
         try:
             prompt = self._build_prompt(mode, user_text)
             answer = self.ask(prompt)

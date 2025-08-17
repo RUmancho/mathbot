@@ -6,65 +6,18 @@ class User:
     RUN_BOT_COMMADS = ["/start"]
     SHOW_MAIN_MENU = ["/меню", "/главная", "/menu", "/main", "/home"]
 
+    # Базовый класс больше не используется в упрощённой архитектуре,
+    # оставлен для совместимости с частями кода (теория, FileSender и т.п.).
     def __init__(self, ID: str, bind_bot = None):
         self.info = database.Client(ID)
         self._ID = ID
         self._telegramBot = bind_bot
-        self._current_request = None
-        self._current_command = None
-        self._role_changed = False
-        self.instance = None
-
-    def set_role(self, user_class, ID: str):
-        """Назначает активную роль пользователя и возвращает её инстанс.
-
-        Создаёт новый экземпляр, если тип роли изменился или инстанса нет,
-        иначе переиспользует текущий, обновляя ссылку на бота и ID.
-        """
-        needs_new = (
-            self.instance is None
-            or not isinstance(self.instance, user_class)
-            or self.instance.get_ID() != ID
-        )
-        if needs_new:
-            self.instance = user_class(ID, self._telegramBot)
-            self._role_changed = True
-        else:
-            self.instance._telegramBot = self._telegramBot
-            self.instance.set_ID(ID)
-            self._role_changed = False
-        return self.instance
-
-    def get_user(self):
-        return self.instance
-
-    def reset_role_change_flag(self):
-        self._role_changed = False
 
     def get_ID(self) -> str:
         return self._ID
 
-    def set_ID(self, ID: str):
-        if type(ID) != str:
-            raise TypeError("ID is not str")
-        self._ID = ID
-
     def out(self, text: str, markup=None):
-        """Отправка текстового сообщения в чат текущему пользователю."""
         self._telegramBot.send_message(self._ID, text=text, reply_markup=markup)
-
-    def unsupported_command_warning(self):
-        """Сообщение о неизвестной команде пользователю."""
-        self.out("Неизвестная команда")
-
-    # Унифицированные хуки для активных процессов/режимов
-    def has_active_process(self) -> bool:
-        """Есть ли у роли активный многошаговый процесс/режим?"""
-        return False
-
-    def handle_active_process(self) -> bool:
-        """Продолжает активный процесс/режим. Возвращает True, если обработал."""
-        return False
 
     def update_last_request(self, request: str):
         """Синхронизирует последний ввод как на агрегаторе, так и на роли."""

@@ -1,5 +1,3 @@
-"""Отдаёт теоретические материалы и клавиатуры по запросу пользователя."""
-
 from resource import resource as res
 from core import FileSender
 import keyboards

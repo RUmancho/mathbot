@@ -20,7 +20,7 @@ class Tables:
         solution_file = Column(BLOB)       # файл решения
 
     class Users(Base):
-        """Таблица зарегестрированных пользователей"""
+        """Таблица зарегистрированных пользователей"""
         __tablename__ = "users"
 
         telegram_id = Column(String, primary_key=True)  # первичный ключ — telegram_id пользователя
@@ -62,6 +62,8 @@ class Client:
 
         if self.__dict__["role"] == "учитель":
             self.__dict__["my_students"] = self._reader("my_students")
+            self.__dict__["city"] = self._reader("city")
+            self.__dict__["school"] = self._reader("school")
 
         if self.__dict__["role"] == "ученик":
             self.__dict__["my_teachers"] = self._reader("my_teachers")
@@ -126,6 +128,52 @@ class Manager:
             else:
                 return False
         except SQLAlchemyError as e:
+            if session and session.is_active:
+                session.rollback()
+            return False
+        finally:
+            if session:
+                session.close()
+
+    @staticmethod
+    def update(table, filter_dict: dict, update_dict: dict):
+        """
+        Обновляет запись в таблице по условию фильтра с несколькими полями
+        
+        Args:
+            table: Таблица для обновления
+            filter_dict: Словарь условий фильтрации (например, {"telegram_id": "123"})
+            update_dict: Словарь полей для обновления (например, {"name": "Иван", "city": "Москва"})
+            
+        Returns:
+            bool: True если запись успешно обновлена, False в противном случае
+        """
+        session = None
+        try:
+            session = Manager.session()
+            
+            # Создаем фильтр из словаря условий
+            query = session.query(table)
+            for column_name, value in filter_dict.items():
+                query = query.filter(getattr(table, column_name) == value)
+            
+            record = query.first()
+
+            if record:
+                # Обновляем все поля из словаря обновлений
+                for column_name, new_value in update_dict.items():
+                    if hasattr(table, column_name):
+                        setattr(record, column_name, new_value)
+                
+                session.commit()
+                return True
+            else:
+                return False
+        except SQLAlchemyError as e:
+            if session and session.is_active:
+                session.rollback()
+            return False
+        except Exception as e:
             if session and session.is_active:
                 session.rollback()
             return False

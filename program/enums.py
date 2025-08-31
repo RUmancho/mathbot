@@ -52,7 +52,7 @@ class TeacherCommands(Enum):
     """Команды меню учителя (текстовые ярлыки на кнопках)."""
     PROFILE = "профиль"
     ATTACH_CLASS = "прикрепить класс"
-    MY_STUDENTS = "ваши учащиеся"
+    MY_STUDENTS = "мои учащиеся"
     SEND_TASK = "отправить задание"
     CHECK_TASKS = "проверить задания"
     SEND_INDIVIDUAL_TASK = "отправить индивидуальное задание"

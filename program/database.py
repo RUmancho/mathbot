@@ -3,6 +3,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from config import PASSWORD_LENGTH
 import resource
+from datetime import datetime, timedelta
 
 Base = declarative_base()
 
@@ -18,6 +19,21 @@ class Tables:
         task_file = Column(BLOB)           # файл задания
         solution_filename = Column(String) # имя файла решения
         solution_file = Column(BLOB)       # файл решения
+        
+        # Новые поля для текстовых заданий
+        task_text = Column(String, nullable=True)      # текст задания (для LLM)
+        topic = Column(String, nullable=True)          # тема задания
+        difficulty = Column(String, nullable=True)     # сложность задания
+        status = Column(String, default="sent")        # статус: sent, completed, overdue
+        created_at = Column(String, nullable=True)     # дата создания
+        deadline = Column(String, nullable=True)       # срок выполнения
+        
+        # Поля для ответов и оценки
+        student_answer = Column(String, nullable=True)     # ответ студента
+        answer_submitted_at = Column(String, nullable=True) # дата отправки ответа
+        teacher_feedback = Column(String, nullable=True)   # отзыв учителя
+        grade = Column(String, nullable=True)              # оценка
+        graded_at = Column(String, nullable=True)          # дата оценки
 
     class Users(Base):
         """Таблица зарегистрированных пользователей"""
@@ -214,6 +230,178 @@ class Manager:
                 session.close()
 
     @staticmethod
+    def search_records_case_insensitive(table, filter_dict: dict, session=None):
+        """
+        Поиск записей с регистронезависимым сравнением строковых полей
+        
+        Args:
+            table: Таблица для поиска
+            filter_dict: Словарь условий фильтрации (например, {"city": "нижний новгород"})
+            session: Внешняя сессия (опционально)
+            
+        Returns:
+            list: Список найденных записей в виде словарей или None при ошибке
+        """
+        use_external_session = True if session else False 
+        try:
+            if not use_external_session:  
+                session = Manager.session()
+            
+            query = session.query(table)
+            
+            for column_name, value in filter_dict.items():
+                if hasattr(table, column_name):
+                    column = getattr(table, column_name)
+                    # Используем LOWER() для регистронезависимого сравнения
+                    query = query.filter(text(f"LOWER({column.name}) = LOWER('{value}')"))
+            
+            records = query.all()
+            return [Manager.record_to_dict(record) for record in records]
+        
+        except SQLAlchemyError as e:
+            return None
+        
+        finally:
+            if session and not use_external_session:
+                session.close()
+
+    @staticmethod
+    def search_records_unicode_insensitive(table, filter_dict: dict, session=None):
+        """
+        Поиск записей с регистронезависимым сравнением строковых полей
+        Использует Python для корректной обработки Unicode символов (включая кириллицу)
+        
+        Args:
+            table: Таблица для поиска
+            filter_dict: Словарь условий фильтрации (например, {"city": "нижний новгород"})
+            session: Внешняя сессия (опционально)
+            
+        Returns:
+            list: Список найденных записей в виде словарей или None при ошибке
+        """
+        use_external_session = True if session else False 
+        try:
+            if not use_external_session:  
+                session = Manager.session()
+            
+            print(f"DEBUG: search_records_unicode_insensitive - filter: {filter_dict}")
+            
+            # Сначала получаем все записи из таблицы
+            query = session.query(table)
+            all_records = query.all()
+            print(f"DEBUG: Total records in table: {len(all_records)}")
+            
+            # Показываем все записи для отладки
+            for i, record in enumerate(all_records):
+                record_dict = Manager.record_to_dict(record)
+                print(f"DEBUG: Record {i+1}: {record_dict}")
+            
+            # Фильтруем записи в Python с учетом Unicode
+            filtered_records = []
+            
+            for record in all_records:
+                record_dict = Manager.record_to_dict(record)
+                matches_all_filters = True
+                print(f"DEBUG: Checking record: {record_dict.get('telegram_id', 'unknown')}")
+                
+                for column_name, filter_value in filter_dict.items():
+                    if column_name in record_dict:
+                        record_value = record_dict[column_name]
+                        
+                        # Пропускаем None значения
+                        if record_value is None:
+                            print(f"DEBUG: Column {column_name} is None for record {record_dict.get('telegram_id', 'unknown')}")
+                            matches_all_filters = False
+                            break
+                        
+                        # Приводим к строке и сравниваем без учета регистра
+                        if isinstance(record_value, str) and isinstance(filter_value, str):
+                            record_lower = record_value.lower()
+                            filter_lower = filter_value.lower()
+                            print(f"DEBUG: Comparing '{record_value}' (lower: '{record_lower}') with '{filter_value}' (lower: '{filter_lower}')")
+                            if record_lower != filter_lower:
+                                print(f"DEBUG: No match for column {column_name}")
+                                matches_all_filters = False
+                                break
+                            else:
+                                print(f"DEBUG: Match found for column {column_name}")
+                        else:
+                            # Для нестроковых значений используем улучшенное сравнение
+                            print(f"DEBUG: Non-string comparison: {record_value} (type: {type(record_value)}) vs {filter_value} (type: {type(filter_value)})")
+                            
+                            # Приводим к одинаковому типу для сравнения
+                            if isinstance(record_value, (int, float)) and isinstance(filter_value, (int, float)):
+                                # Числовые типы
+                                if float(record_value) != float(filter_value):
+                                    print(f"DEBUG: No match for column {column_name} (numeric)")
+                                    matches_all_filters = False
+                                    break
+                                else:
+                                    print(f"DEBUG: Match found for column {column_name} (numeric)")
+                            elif isinstance(record_value, str) and isinstance(filter_value, (int, float)):
+                                # Строка vs число - пробуем преобразовать строку в число
+                                try:
+                                    record_num = float(record_value)
+                                    filter_num = float(filter_value)
+                                    if record_num != filter_num:
+                                        print(f"DEBUG: No match for column {column_name} (string->number)")
+                                        matches_all_filters = False
+                                        break
+                                    else:
+                                        print(f"DEBUG: Match found for column {column_name} (string->number)")
+                                except ValueError:
+                                    print(f"DEBUG: No match for column {column_name} (cannot convert string to number)")
+                                    matches_all_filters = False
+                                    break
+                            elif isinstance(filter_value, str) and isinstance(record_value, (int, float)):
+                                # Число vs строка - пробуем преобразовать строку в число
+                                try:
+                                    record_num = float(record_value)
+                                    filter_num = float(filter_value)
+                                    if record_num != filter_num:
+                                        print(f"DEBUG: No match for column {column_name} (number->string)")
+                                        matches_all_filters = False
+                                        break
+                                    else:
+                                        print(f"DEBUG: Match found for column {column_name} (number->string)")
+                                except ValueError:
+                                    print(f"DEBUG: No match for column {column_name} (cannot convert string to number)")
+                                    matches_all_filters = False
+                                    break
+                            else:
+                                # Прямое сравнение для других типов
+                                if record_value != filter_value:
+                                    print(f"DEBUG: No match for column {column_name} (direct)")
+                                    matches_all_filters = False
+                                    break
+                                else:
+                                    print(f"DEBUG: Match found for column {column_name} (direct)")
+                    else:
+                        # Колонка не найдена
+                        print(f"DEBUG: Column {column_name} not found in record")
+                        matches_all_filters = False
+                        break
+                
+                if matches_all_filters:
+                    print(f"DEBUG: Record matches all filters: {record_dict.get('telegram_id', 'unknown')}")
+                    filtered_records.append(record_dict)
+                else:
+                    print(f"DEBUG: Record does not match all filters")
+            
+            print(f"DEBUG: Found {len(filtered_records)} matching records")
+            return filtered_records
+        
+        except SQLAlchemyError as e:
+            print(f"Database error in search_records_unicode_insensitive: {e}")
+            return None
+        except Exception as e:
+            print(f"Unexpected error in search_records_unicode_insensitive: {e}")
+            return None
+        finally:
+            if session and not use_external_session:
+                session.close()
+
+    @staticmethod
     def delete_record(table, column_name: str, value) -> bool:
         try:
             with Manager.session() as session:
@@ -237,6 +425,187 @@ class Manager:
             with Manager.session() as session:
                 return [i[0] for i in session.query(column).all() if i[0] is not None]
         except SQLAlchemyError as e:
+            return []
+
+    @staticmethod
+    def create_assignment(sender_id: str, recipient_id: str, task_text: str, topic: str, difficulty: str) -> bool:
+        """Создает новое задание в базе данных"""
+        try:
+            current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            deadline = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
+            
+            assignment = Tables.Singly(
+                sender_id=sender_id,
+                recipient_id=recipient_id,
+                task_text=task_text,
+                topic=topic,
+                difficulty=difficulty,
+                status="sent",
+                created_at=current_time,
+                deadline=deadline
+            )
+            
+            return Manager.write(assignment)
+        except Exception as e:
+            print(f"Error creating assignment: {e}")
+            return False
+
+    @staticmethod
+    def get_student_assignments(student_id: str) -> list:
+        """Получает все задания для ученика"""
+        try:
+            with Manager.session() as session:
+                assignments = session.query(Tables.Singly).filter(
+                    Tables.Singly.recipient_id == student_id
+                ).order_by(Tables.Singly.created_at.desc()).all()
+                
+                result = []
+                for assignment in assignments:
+                    result.append({
+                        'id': assignment.id,
+                        'sender_id': assignment.sender_id,
+                        'task_text': assignment.task_text,
+                        'topic': assignment.topic,
+                        'difficulty': assignment.difficulty,
+                        'status': assignment.status,
+                        'created_at': assignment.created_at,
+                        'deadline': assignment.deadline
+                    })
+                return result
+        except Exception as e:
+            print(f"Error getting student assignments: {e}")
+            return []
+
+    @staticmethod
+    def get_teacher_assignments(teacher_id: str) -> list:
+        """Получает все задания, отправленные учителем"""
+        try:
+            with Manager.session() as session:
+                assignments = session.query(Tables.Singly).filter(
+                    Tables.Singly.sender_id == teacher_id
+                ).order_by(Tables.Singly.created_at.desc()).all()
+                
+                result = []
+                for assignment in assignments:
+                    result.append({
+                        'id': assignment.id,
+                        'recipient_id': assignment.recipient_id,
+                        'task_text': assignment.task_text,
+                        'topic': assignment.topic,
+                        'difficulty': assignment.difficulty,
+                        'status': assignment.status,
+                        'created_at': assignment.created_at,
+                        'deadline': assignment.deadline
+                    })
+                return result
+        except Exception as e:
+            print(f"Error getting teacher assignments: {e}")
+            return []
+
+    @staticmethod
+    def update_assignment_status(assignment_id: int, new_status: str) -> bool:
+        """Обновляет статус задания"""
+        try:
+            with Manager.session() as session:
+                assignment = session.query(Tables.Singly).filter(Tables.Singly.id == assignment_id).first()
+                if assignment:
+                    assignment.status = new_status
+                    session.commit()
+                    return True
+                return False
+        except Exception as e:
+            print(f"Error updating assignment status: {e}")
+            return False
+
+    @staticmethod
+    def submit_student_answer(assignment_id: int, student_answer: str) -> bool:
+        """Студент отправляет ответ на задание"""
+        try:
+            with Manager.session() as session:
+                assignment = session.query(Tables.Singly).filter(Tables.Singly.id == assignment_id).first()
+                if assignment:
+                    assignment.student_answer = student_answer
+                    assignment.answer_submitted_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    assignment.status = "completed"
+                    session.commit()
+                    return True
+                return False
+        except Exception as e:
+            print(f"Error submitting student answer: {e}")
+            return False
+
+    @staticmethod
+    def get_completed_assignments_for_teacher(teacher_id: str) -> list:
+        """Получает завершенные задания для проверки учителем"""
+        try:
+            with Manager.session() as session:
+                assignments = session.query(Tables.Singly).filter(
+                    Tables.Singly.sender_id == teacher_id,
+                    Tables.Singly.status == "completed"
+                ).all()
+                
+                result = []
+                for assignment in assignments:
+                    result.append({
+                        'id': assignment.id,
+                        'recipient_id': assignment.recipient_id,
+                        'topic': assignment.topic,
+                        'difficulty': assignment.difficulty,
+                        'task_text': assignment.task_text,
+                        'student_answer': assignment.student_answer,
+                        'answer_submitted_at': assignment.answer_submitted_at,
+                        'created_at': assignment.created_at,
+                        'deadline': assignment.deadline
+                    })
+                return result
+        except Exception as e:
+            print(f"Error getting completed assignments: {e}")
+            return []
+
+    @staticmethod
+    def grade_assignment(assignment_id: int, grade: str, feedback: str) -> bool:
+        """Учитель оценивает задание"""
+        try:
+            with Manager.session() as session:
+                assignment = session.query(Tables.Singly).filter(Tables.Singly.id == assignment_id).first()
+                if assignment:
+                    assignment.grade = grade
+                    assignment.teacher_feedback = feedback
+                    assignment.status = "graded"
+                    assignment.graded_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    session.commit()
+                    return True
+                return False
+        except Exception as e:
+            print(f"Error grading assignment: {e}")
+            return False
+
+    @staticmethod
+    def get_graded_assignments_for_student(student_id: str) -> list:
+        """Получает оцененные задания для студента"""
+        try:
+            with Manager.session() as session:
+                assignments = session.query(Tables.Singly).filter(
+                    Tables.Singly.recipient_id == student_id,
+                    Tables.Singly.status == "graded"
+                ).all()
+                
+                result = []
+                for assignment in assignments:
+                    result.append({
+                        'id': assignment.id,
+                        'topic': assignment.topic,
+                        'difficulty': assignment.difficulty,
+                        'task_text': assignment.task_text,
+                        'student_answer': assignment.student_answer,
+                        'grade': assignment.grade,
+                        'teacher_feedback': assignment.teacher_feedback,
+                        'graded_at': assignment.graded_at,
+                        'created_at': assignment.created_at
+                    })
+                return result
+        except Exception as e:
+            print(f"Error getting graded assignments: {e}")
             return []
 
 def find_my_role(ID: str):

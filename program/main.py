@@ -12,7 +12,7 @@ from colorama import Fore, Back, Style, init
 # Инициализируем colorama
 init(autoreset=True)
 
-POLLING_TIMEOUT = 60
+POLLING_TIMEOUT = 6000
 POLLING_NONE_STOP = True
 
 bot = telebot.TeleBot(config.BOT_TOKEN)
